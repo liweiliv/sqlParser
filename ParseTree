@@ -1,17 +1,18 @@
 {
 	"ID":4000,
 	"NAME":"COLUMN TYPE",
-	"OR":true
+	"COMMENT":"COLUMN TYPE",
+	"OR":true,
 	"C":[
-		{  OPTIONAL":true,
+		{  "OPT":true,
 			"C":[
 			{"K":"_S_:BIT"},
-			{"OPT":true,"K":"_B_:"}
+			{"OPT":true,"K":"_B_"}
 		]},
 		{"OPT":true,
 			"C":[
 			{"K":"_S_:TINYINT"},
-			{"OPT":true,"K":"_B_:"},
+			{"OPT":true,"K":"_B_"},
 			{"OPT":true,"K":"_S_:UNSIGNED"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
@@ -21,15 +22,15 @@
 			"OPT":true,
 			"C":[
 			{"K":"_S_:SMALLINT"},
-			{"OPT":true,"K":"_B_:"},
+			{"OPT":true,"K":"_B_"},
 			{"OPT":true,"K":"_S_:UNSIGNED"},
-			{""OPT":true,"K":"_S_:ZEROFILL"}
+			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
 		{
 			"OPT":true,
 			"C":[
 			{"K":"_S_:MEDIUMINT"},
-			{"OPT":true,"K":"_B_:"},
+			{"OPT":true,"K":"_B_"},
 			{"OPT":true,"K":"_S_:UNSIGNED"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
@@ -37,7 +38,7 @@
 			"OPT":true,
 			"C":[
 			{"K":"_S_:INTEGER"},
-			{"OPT":true,"K":"_B_:"},
+			{"OPT":true,"K":"_B_"},
 			{"OPT":true,"K":"_S_:UNSIGNED"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
@@ -45,7 +46,7 @@
 			"OPT":true,
 			"C":[
 			{"K":"_S_:INT"},
-			{"OPT":true,"K":"_B_:"},
+			{"OPT":true,"K":"_B_"},
 			{"OPT":true,"K":"_S_:UNSIGNED"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
@@ -53,7 +54,7 @@
 			"OPT":true,
 			"C":[
 			{"K":"_S_:BIGINT"},
-			{"OPT":true,"K":"_B_:"},
+			{"OPT":true,"K":"_B_"},
 			{"OPT":true,"K":"_S_:UNSIGNED"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
@@ -61,7 +62,7 @@
 			"OPT":true,
 			"C":[
 			{"K":"_S_:DECIMAL"},
-			{"OPT":true,"K":"_B_:"},
+			{"OPT":true,"K":"_B_"},
 			{"OPT":true,"K":"_S_:UNSIGNED"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
@@ -69,7 +70,7 @@
 			"OPT":true,
 			"C":[
 			{"K":"_S_:FLOAT"},
-			{"OPT":true,"K":"_B_:"},
+			{"OPT":true,"K":"_B_"},
 			{"OPT":true,"K":"_S_:UNSIGNED"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
@@ -77,7 +78,7 @@
 			"OPT":true,
 			"C":[
 			{"K":"_S_:DOUBLE"},
-			{"OPT":true,"K":"_B_:"},
+			{"OPT":true,"K":"_B_"},
 			{"OPT":true,"K":"_S_:UNSIGNED"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
@@ -85,55 +86,55 @@
 			"OPT":true,
 			"C":[
 			{"K":"_S_:DATETIME"},
-			{"OPT":true,"K":"_B_:"},
+			{"OPT":true,"K":"_B_"}
 		]},
 		{"OPT":true,"K":"_S_:DATE"},
 		{
 			"OPT":true,
 			"C":[
 			{"K":"_S_:TIMESTAMP"},
-			{"OPT":true,"K":"_B_:"},
+			{"OPT":true,"K":"_B_"}
 		]},
 		{
 			"OPT":true,
 			"C":[
 			{"K":"_S_:TIME"},
-			{"OPT":true,"K":"_B_:"},
+			{"OPT":true,"K":"_B_"}
 		]},
 		{
 			"OPT":true,
 			"C":[
 			{"K":"_S_:YEAR"},
-			{"OPT":true,"K":"_B_:"},
+			{"OPT":true,"K":"_B_"}
 		]},
 		{"OPT":true,
 			"C":[
 				{"OPT":true,"K":"_S_:NATIONAL"},
-				{"OR"=true,"C":[
+				{"OR":true,"C":[
 					{"K":"_S_:CHAR"},
-					{"K":"_S_:VARCHAR"},
+					{"K":"_S_:VARCHAR"}
 				]},
-				{"OPT":true,"K":"_B_:"},
+				{"OPT":true,"K":"_B_"},
 				{"OPT":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
-					{"K":"_AS_"},
+					{"K":"_AS_"}
 				]},
 				{"OPT":true,"C":[
 					{"K":"_S_:COLLATE"},
-					{"K":"_AS_"},
-				]},
+					{"K":"_AS_"}
+				]}
 		]},
 		{
 			"OPT":true,
 			"C":[
 			{"K":"_S_:BINARY"},
-			{"OPT":true,"K":"_B_:"},
+			{"OPT":true,"K":"_B_"}
 		]},
 		{
 			"OPT":true,
 			"C":[
 			{"K":"_S_:VARBINARY"},
-			{"OPT":true,"K":"_B_:"},
+			{"OPT":true,"K":"_B_"}
 		]},
 		{"OPT":true,"K":"_S_:TINYBLOB"},
 		{"OPT":true,"K":"_S_:BLOB"},
@@ -144,48 +145,48 @@
 				{"K":"_S_:TINYTEXT"},
 				{"OPT":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
-					{"K":"_AS_"},
+					{"K":"_AS_"}
 				]},
 				{"OPT":true,"C":[
 					{"K":"_S_:COLLATE"},
-					{"K":"_AS_"},
-				]},
+					{"K":"_AS_"}
+				]}
 		]},
 		{"OPT":true,
 			"C":[
 				{"K":"_S_:MEDIUMTEXT"},
 				{"OPT":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
-					{"K":"_AS_"},
+					{"K":"_AS_"}
 				]},
 				{"OPT":true,"C":[
 					{"K":"_S_:COLLATE"},
-					{"K":"_AS_"},
-				]},
+					{"K":"_AS_"}
+				]}
 		]},
 		{"OPT":true,
 			"C":[
 				{"K":"_S_:TEXT"},
 				{"OPT":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
-					{"K":"_AS_"},
+					{"K":"_AS_"}
 				]},
 				{"OPT":true,"C":[
 					{"K":"_S_:COLLATE"},
-					{"K":"_AS_"},
-				]},
+					{"K":"_AS_"}
+				]}
 		]},
 		{"OPT":true,
 			"C":[
 				{"K":"_S_:LONGTEXT"},
 				{"OPT":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
-					{"K":"_AS_"},
+					{"K":"_AS_"}
 				]},
 				{"OPT":true,"C":[
 					{"K":"_S_:COLLATE"},
-					{"K":"_AS_"},
-				]},
+					{"K":"_AS_"}
+				]}
 		]},
 		{"OPT":true,
 			"C":[
@@ -193,12 +194,12 @@
 				{"K":"_B_"},
 				{"OPT":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
-					{"K":"_AS_"},
+					{"K":"_AS_"}
 				]},
 				{"OPT":true,"C":[
 					{"K":"_S_:COLLATE"},
-					{"K":"_AS_"},
-				]},
+					{"K":"_AS_"}
+				]}
 		]},
 		{"OPT":true,
 			"C":[
@@ -206,21 +207,66 @@
 				{"K":"_B_"},
 				{"OPT":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
-					{"K":"_AS_"},
+					{"K":"_AS_"}
 				]},
 				{"OPT":true,"C":[
 					{"K":"_S_:COLLATE"},
-					{"K":"_AS_"},
-				]},
+					{"K":"_AS_"}
+				]}
 		]},
 		{"OPT":true,"K":"_S_:GEOMETRY"},
-		{"OPT":true,"K":"_S_:JSON"},
+		{"OPT":true,"K":"_S_:POINT"},
+		{"OPT":true,"K":"_S_:LINESTRING"},
+		{"OPT":true,"K":"_S_:JSON"}
 	]
 }
 {
+	"ID":20000,
+	"NAME":"DEFAULT VALUE",
+	"OPT":true,
+	"C":[
+		{"K":"_S_:DEFAULT"},
+		{"OR":true,
+		"C":[
+			{"C":[
+				{"K":"_NUM_"},
+				{"OPT":true,"C":[
+					{"K":"_C_:."},
+					{"K":"_NUM_"}
+				]}
+			]},
+			{"K":"_A_"},
+			{"OR":true,"LOOP":true,"C":[
+				{"C":[
+				{"K":"_S_:CURRENT_TIMESTAMP"},
+				{"OPT":true,"K":"_B_","COMMENT":"`gmt_create` timestamp(6) not null default current_timestamp(6)"}
+				]},
+				{"C":[
+					{"K":"_S_:ON"},
+					{"K":"_S_:UPDATE"},
+					{"K":"_S_:CURRENT_TIMESTAMP"},
+					{"OPT":true,"K":"_B_","COMMENT":"`gmt_create` timestamp(6) not null default current_timestamp(6)"}
+				]}
+			]},
+			{"C":[
+				{"K":"_AS_"},
+				{"K":"_B_"}
+			]},
+			{"OR":true,"C":[
+				{"K":"_S_:TRUE"},
+				{"K":"_S_:FALSE"}
+			]},
+			{"K":"_S_:NULL"},
+			{"K":"_N_"}
+		]}
+	]
+}
+
+{
 	"ID":0,
-	"NAME":"COLUMN INFO"
+	"NAME":"COLUMN INFO",
 	"LOOP":true,
+	"COMMENT":"COLUMN INFO",
 	"C":[
 		{"K":"_N_","COMMENT":"column name"},
 		{"INCLUDE":4000,"COMMENT":"column type"},
@@ -231,17 +277,16 @@
 				{"K":"_S_:NOT NULL"},
 				{"K":"_S_:NULL"}
         ]},
-		{
-			"OPT":true,
-			"C":[
-				{"OPT":false,"K":"_S_:DEFAULT"},
-				{
-					"OR":true,
-					"C":[
-					{"OPT":false,"K":"_A_"},
-					{"OPT":false,"K":"_S_:NULL"}
-				]}
-		]},
+      {"OPT":true,"C":[
+      		{"OPT":true,"K":"_S_:GENERATED ALWAYS"},
+      		{"K":"_S_:AS"},
+      		{"K":"_B_"},
+      		{"OPT":true,"C":[
+      			{"K":"_S_:VIRTUAL"},
+      			{"K":"_S_:STORED"}
+      			]}
+      	]},
+		{"INCLUDE":20000},
 		{"OPT":true,"K":"_S_:AUTO_INCREMENT"},
 		{
 			"OPT":true,
@@ -361,7 +406,6 @@
 {
 	"ID":2001,
 	"COMMENT":"CONSTRAINT",
-	"OPT":true,
 	"LOOP":true,
 	"C":[
 			{
@@ -414,47 +458,50 @@
 	"NAME":"create_definition",
 	"LOOP":true,
 	"OPT":true,
-	"OR":true,
 	"C":[
-		{"INCLUDE":0},
-		{"INCLUDE":2001},
-		{"OPT":true,
+		{	"OR":true,
 			"C":[
-			{"OR":true,
-				"C":[
-					{"K":"_S_:KEY"},
-					{"K":"_S_:INDEX"}
-				]
-			},
-			{"OPT":true,"K":"_N_"},
+			{"INCLUDE":0},
+			{"INCLUDE":2001},
 			{"OPT":true,
 				"C":[
-				{"K":"_S_:USING"},
-				{"K":"_AS_"}
-			]},
-			{"K":"_B_"},
-			{"INCLUDE":1001}
-			]
-		},
-		{"OPT":true,
-			"C":[
 				{"OR":true,
 					"C":[
-						{"K":"_S_:FULLTEXT"},
-						{"K":"_S_:SPATIAL"}
-					]
-				},
-				{"OR":true,"OPT":true,
-					"C":[
-					{"K":"_S_:KEY"},
-					{"K":"_S_:INDEX"}
+						{"K":"_S_:KEY"},
+						{"K":"_S_:INDEX"}
 					]
 				},
 				{"OPT":true,"K":"_N_"},
+				{"OPT":true,
+					"C":[
+					{"K":"_S_:USING"},
+					{"K":"_AS_"}
+				]},
 				{"K":"_B_"},
 				{"INCLUDE":1001}
-			]
-		}
+				]
+			},
+			{"OPT":true,
+				"C":[
+				{"OR":true,
+						"C":[
+							{"K":"_S_:FULLTEXT"},
+							{"K":"_S_:SPATIAL"}
+						]
+					},
+					{"OR":true,"OPT":true,
+						"C":[
+						{"K":"_S_:KEY"},
+						{"K":"_S_:INDEX"}
+						]
+					},
+					{"OPT":true,"K":"_N_"},
+					{"K":"_B_"},
+					{"INCLUDE":1001}
+				]
+			}
+		]},
+		{"OPT":true,"K":"_C_:,"}
 	]
 }
 
@@ -479,6 +526,7 @@
 			{"OPT":true,"K":"_S_:DEFAULT"},		
 			{"OR":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
+					{"K":"_S_:CHARSET"},
 					{"K":"_S_:COLLATE"}			
 				]},
 			{"OPT":true,"K":"_C_:="},
@@ -609,7 +657,7 @@
 					{"C":[
 						{"K":"_S_:HASH"},
 						{"K":"_B_"}
-					]}
+					]},
 					{"C":[
 						{"K":"_S_:KEY"},
 						{"OPT":true,"C":[
@@ -617,7 +665,7 @@
 							{"K":"_C_:="},
 							{"K":"_AS_"}
 						]},
-						{"K":"_B_"},
+						{"K":"_B_"}
 					]}
 				]}
 			]},
@@ -625,7 +673,7 @@
 				{"OR":true,"C":[
 					{"K":"_S_:RANGE"},
 					{"K":"_S_:LIST"}
-				]}
+				]},
 				{"OR":true,"C":[
 					{"K":"_B_"},	
 					{"C":[
@@ -647,8 +695,8 @@
 					{"OR":true,"C":[
 						{"C":[
 							{"K":"_S_:HASH"},
-							{K":"_B_"}
-						]}
+							{"K":"_B_"}
+						]},
 						{"C":[
 							{"K":"_S_:KEY"},
 							{"OPT":true,"C":[
@@ -656,7 +704,7 @@
 								{"K":"_C_:="},
 								{"K":"_AS_"}
 							]},
-							{"K":"_B_"},
+							{"K":"_B_"}
 						]}
 					]}
 				]}
@@ -665,7 +713,7 @@
 				{"K":"_S_:SUBPARTITIONS"},
 				{"K":"_AS_"}				
 			]}
-		]}
+		]},
 		{"K":"_B_"}
 	]
 }
@@ -673,6 +721,7 @@
 {
 	"ID":3000,
 	"END":true,
+	"HEAD":true,
 	"COMMENT":"CREATE TABLE",
 	"C":[
 		{"K":"_S_:CREATE"},
@@ -682,7 +731,7 @@
 			{"K":"_S_:TABLE"},
 			{"K":"_S_:SEQUENCE","COMMENT":"in rds,CREATE SEQUENCE is just like CREATE TABLE"}
 		]},
-		{"OPT":true,"K":"_S_:IF NOT EXISTS"}
+		{"OPT":true,"K":"_S_:IF NOT EXISTS"},
 		{
 			"OR":true,
 			"C":[
@@ -693,7 +742,7 @@
 					"C":[
 					{"K":"_N_"},
 					{"K":"_C_:."},
-					{"K":"_N_:"}
+					{"K":"_N_"}
 				]},
 				{"K":"_N_","COMMENT":"create table tableName"}
 			]}
@@ -711,7 +760,7 @@
 						"C":[
 							{"K":"_N_"},
 							{"K":"_C_:."},
-							{"K":"_N_:"}
+							{"K":"_N_"}
 					]},
 					{"K":"_N_"}
 				]}
@@ -720,9 +769,385 @@
 				"C":[
 				{"K":"_C_:("},
 				{"INCLUDE":6000},
-				{"K":"_C_:)"}
+				{"K":"_C_:)"},
 				{"INCLUDE":7000}
 			]}
+		]},
+		{"OPT":true,"K":"_S_:;"}
+	]
+}
+{
+	"ID":10000,
+	"OPT":true,
+	"COMMENT":"alter table add column",
+	"C":[
+		{"K":"_S_:ADD"},
+		{"K":"_S_:COLUMN"},
+		{"INCLUDE":0},
+		{"OPT":true,"OR":true,"C":
+			[
+			{"K":"_S_:FIRST"},
+			{"C":[
+				{"K":"_S_:AFTER"},
+				{"K":"_N_"}
+			]}
+		]}
+	]
+}
+{
+	"ID":10010,
+	"OPT":true,
+	"COMMENT":"alter table add columns",
+	"C":[
+		{"K":"_S_:ADD"},
+		{"K":"_S_:COLUMN"},
+		{"K":"_C_:("},
+		{"INCLUDE":0},
+		{"K":"_C_:)"}
+	]
+}
+
+{
+	"ID":10020,
+	"OPT":true,
+	"COMMENT":"alter table MODIFY  column",
+	"C":[
+		{"K":"_S_:MODIFY"},
+		{"OPT":true,"K":"_S_:COLUMN"},
+		{"INCLUDE":0},
+		{"OPT":true,"OR":true,"C":
+			[
+			{"K":"_S_:FIRST"},
+			{"C":[
+				{"K":"_S_:AFTER"},
+				{"K":"_N_"}
+			]}
+		]}
+	]
+}
+
+{
+	"ID":10030,
+	"OPT":true,
+	"COMMENT":"alter table add CONSTRAINT",
+	"C":[
+		{"K":"_S_:ADD"},
+		{"INCLUDE":2001}
+	]
+}
+{
+	"ID":10040,
+	"OPT":true,
+	"COMMENT":"alter table add key",
+	"C":[
+		{"K":"_S_:ADD"},
+		{"OR":true,
+			"C":[
+			{"K":"_S_:KEY"},
+			{"K":"_S_:INDEX"}
+		]},
+		{"LOOP":true,"C":[
+			{"OPT":true,"K":"_N_"},
+			{"OPT":true,
+				"C":[
+				{"K":"_S_:USING"},
+				{"K":"_AS_"}
+			]},
+			{"K":"_B_"},
+			{"INCLUDE":1001}
+		]}
+	]
+}
+
+{
+	"ID":10050,
+	"OPT":true,
+	"COMMENT":"alter table drop index",
+	"C":[
+		{"K":"_S_:DROP"},
+		{"OR":true,
+			"C":[
+			{"K":"_S_:KEY"},
+			{"K":"_S_:INDEX"}
+		]},
+		{"K":"_N_"}
+	]
+}
+{
+	"ID":10060,
+	"OPT":true,
+	"COMMENT":"alter table change column",
+	"C":[
+		{"K":"_S_:CHANGE"},
+		{"OPT":true,"K":"_S_:COLUMN"},
+		{"K":"_N_"},
+		{"INCLUDE":0},
+		{"OPT":true,"OR":true,"C":
+			[
+			{"K":"_S_:FIRST"},
+			{"C":[
+				{"K":"_S_:AFTER"},
+				{"K":"_N_"}
+			]}
+		]}
+	]
+}
+
+{
+	"ID":10070,
+	"OPT":true,
+	"COMMENT":"alter table drop column",
+	"C":[
+		{"K":"_S_:DROP"},
+		{"OPT":true,"K":"_S_:COLUMN"},
+		{"K":"_N_"}
+	]
+}
+{
+	"ID":10080,
+	"OPT":true,
+	"COMMENT":"alter table drop primary key",
+	"C":[
+		{"K":"_S_:DROP"},
+		{"K":"_S_:PRIMARY"},
+		{"K":"_S_:KEY"}
+	]
+}
+{
+	"ID":10090,
+	"OPT":true,
+	"COMMENT":"alter table drop primary key",
+	"C":[
+		{"K":"_S_:DROP"},
+		{"K":"_S_:FOREIGN "},
+		{"K":"_S_:KEY"},
+		{"K":"_N_"}
+	]
+}
+{
+	"ID":9000,
+	"NAME":"alter table",
+	"OPT":true,
+	"HEAD":true,
+	"C":[
+		{"K":"_S_:ALTER"},
+		{"K":"_S_:TABLE"},
+		{
+			"OR":true,
+			"C":[
+			{"OR":true,
+				"C":[
+				{
+					"COMMENT":"alter table dbName.tableName",
+					"C":[
+					{"K":"_N_"},
+					{"K":"_C_:."},
+					{"K":"_N_"}
+				]},
+				{"K":"_N_","COMMENT":"alter table tableName"}
+			]}
+		]},
+		{
+			"LOOP":true,
+			"C":[
+				{"OR":true,"C":[
+					{"INCLUDE":10000},
+					{"INCLUDE":10010},
+					{"INCLUDE":10020},
+					{"INCLUDE":10030},
+					{"INCLUDE":10040},
+					{"INCLUDE":10050},
+					{"INCLUDE":10060},
+					{"INCLUDE":10070},
+					{"INCLUDE":10080},
+					{"INCLUDE":10090},
+					{"C":[
+						{"K":"_S_:COMMENT"},
+						{"OPT":true,"K":"_C_:="},
+						{"K":"_A_"}
+						]}
+				]},
+				{"OPT":true,"K":"_C_:,"}
+			]
+		},
+		{"OPT":true,"K":"_S_:;"}
+	]
+}
+{
+	"ID":12000,
+	"NAME":"create index",
+	"OPT":true,
+	"HEAD":true,
+	"C":[
+		{"K":"_S_:CREATE"},
+		{"OPT":true,"C":[
+			{"K":"_S_:ONINE"},
+			{"K":"_S_:OFFLINE"}
+		]},
+		{"OPT":true,"OR":true,"C":[
+			{"K":"_S_:UNIQUE"},
+			{"K":"_S_:FULLTEXT"},
+			{"K":"_S_:SPATIAL"}
+		]},
+		{"K":"_S_:INDEX"},
+		{"K":"_N_"},
+		{"OPT":true,
+			"C":[
+			{"K":"_S_:USING"},
+			{"K":"_AS_"}
+			]
+		},
+		{"K":"_S_:ON"},
+		{"OR":true,
+			"C":[
+			{
+			"COMMENT":"dbName.tableName",
+			"C":[
+				{"K":"_N_"},
+				{"K":"_C_:."},
+				{"K":"_N_"}
+			]},
+			{"K":"_N_","COMMENT":"tableName"}
+		]},
+		{"K":"_C_:("},
+		{"LOOP":true,
+			"C":[
+			{"K":"_N_"},
+			{"OPT":true,"K":"_B_"},
+			{"OPT":true,"C":[
+				{"K":"_S_:ASC"},
+				{"K":"_S_:DESC"}
+			]},
+			{"OPT":true,"K":"_C_:,"}
+		]},
+		{"K":"_C_:)"},
+		{"INCLUDE":1001},
+		{"OR":true,"OPT":true,"C":[
+			{"C":[
+				{"K":"_S_:ALGORITHM"},
+				{"OPT":true,"K":"_C_:="},
+				{"OR":true,"C":[
+					{"K":"_S_:DEFAULT"},
+					{"K":"_S_:INPLACE"},
+					{"K":"_S_:COPY"}
+				]}
+			]},
+			{"C":[
+				{"K":"_S_:LOCK"},
+				{"OPT":true,"K":"_C_:="},
+				{"OR":true,"C":[
+					{"K":"_S_:DEFAULT"},
+					{"K":"_S_:NONE"},
+					{"K":"_S_:EXCLUSIVE"},
+					{"K":"_S_:SHARED"}
+				]}
+			]}
+		]}
+	]
+}
+{
+	"ID":13000,
+	"NAME":"drop index",
+	"OPT":true,
+	"HEAD":true,
+	"C":[
+		{"K":"_S_:DROP"},
+		{"K":"_S_:INDEX"},
+		{"OPT":true,"C":[
+			{"K":"_S_:ONINE"},
+			{"K":"_S_:OFFLINE"}
+		]},
+		{"K":"_N_"},
+		{"K":"_S_:ON"},
+		{"OR":true,"C":[
+			{"COMMENT":"dbName.tableName",
+				"C":[
+				{"K":"_N_"},
+				{"K":"_C_:."},
+				{"K":"_N_"}
+			]},
+			{"K":"_N_","COMMENT":"tableName"}				
+		]},
+		{"OR":true,"OPT":true,"C":[
+			{"C":[
+				{"K":"_S_:ALGORITHM"},
+				{"OPT":true,"K":"_C_:="},
+				{"OR":true,"C":[
+					{"K":"_S_:DEFAULT"},
+					{"K":"_S_:INPLACE"},
+					{"K":"_S_:COPY"}
+				]}
+			]},
+			{"C":[
+				{"K":"_S_:LOCK"},
+				{"OPT":true,"K":"_C_:="},
+				{"OR":true,"C":[
+					{"K":"_S_:DEFAULT"},
+					{"K":"_S_:NONE"},
+					{"K":"_S_:EXCLUSIVE"},
+					{"K":"_S_:SHARED"}
+				]}
+			]}
+		]}
+	]
+}
+{
+	"ID":14000,
+	"NAME":"DROP TABLE",
+	"OPT":true,
+	"HEAD":true,
+	"C":[
+		{"K":"_S_:DROP"},
+		{"OPT":true,"K":"_S_:TEMPORARY"},
+		{"K":"_S_:TABLE"},
+		{"OPT":true,"K":"_S_:IF EXISTS"},
+		{"LOOP":true,"C":[
+			{"OR":true,"C":[
+				{"COMMENT":"dbName.tableName",
+					"C":[
+					{"K":"_N_"},
+					{"K":"_C_:."},
+					{"K":"_N_"}
+				]},
+				{"K":"_N_","COMMENT":"tableName"}				
+			]},
+			{"OPT":true,"K":"_C_:,"}
+		]},
+		{"OPT":true,"OR":true,"C":[
+			{"K":"_S_:RESTRICT"},
+			{"K":"_S_:CASCADE"}
+		]}		
+	]
+}
+{
+	"ID":15000,
+	"NAME":"RENAME TABLE",
+	"OPT":true,
+	"HEAD":true,
+	"C":[
+		{"K":"_S_:RENAME"},
+		{"K":"_S_:TABLE"},
+		{"LOOP":true,"C":[
+			{"OR":true,"C":[
+			{"COMMENT":"dbName.tableName",
+				"C":[
+				{"K":"_N_"},
+				{"K":"_C_:."},
+				{"K":"_N_"}
+				]},
+			{"K":"_N_","COMMENT":"tableName"}				
+			]},
+			{"K":"_S_:TO"},
+			{"OR":true,"C":[
+			{"COMMENT":"dbName.tableName",
+				"C":[
+				{"K":"_N_"},
+				{"K":"_C_:."},
+				{"K":"_N_"}
+				]},
+			{"K":"_N_","COMMENT":"tableName"}				
+			]},
+			{"OPT":true,"K":"_C_:,"}
 		]}
 	]
 }

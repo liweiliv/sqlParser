@@ -1,10 +1,10 @@
 /*
- * tireTree.cpp
+ * trieTree.cpp
  *
  *  Created on: 2018年11月5日
  *      Author: liwei
  */
-#include "tireTree.h"
+#include "trieTree.h"
 #include <string.h>
 #include <assert.h>
 #define TT_VALUE_MASK 0x8000000000000000UL
@@ -20,7 +20,7 @@
 #define TT_NODE_HIGH_LEN 2
 #define GET_NODE_HIGH_OFFSET(v) (((v)&TT_NODE_HIGH_MASK)>>(TT_NODE_LOW_LEN+TT_NODE_MID_LEN))
 
-void * tireTree::node::get(uint8_t c)
+void * trieTree::node::get(uint8_t c)
 {
     uint8_t off = GET_NODE_HIGH_OFFSET(c);
     void ** next;
@@ -32,7 +32,7 @@ void * tireTree::node::get(uint8_t c)
     }
     return NULL;
 }
-bool tireTree::node::put(uint8_t c, void *value)
+bool trieTree::node::put(uint8_t c, void *value)
 {
     void ** mid, **low;
     bool newMid = false;
@@ -98,13 +98,13 @@ bool tireTree::node::put(uint8_t c, void *value)
 
     }
 }
-tireTree::node::node(uint8_t _c) :
+trieTree::node::node(uint8_t _c) :
         c(_c), num(0), child(NULL)
 {
     child = (void**)malloc(sizeof(void*)*(1 << TT_NODE_HIGH_LEN));
     memset(child,0,sizeof(void*)*(1 << TT_NODE_HIGH_LEN));
 }
-tireTree::node::~node()
+trieTree::node::~node()
 {
     void ** mid, **low;
     if (child != NULL)
@@ -126,17 +126,17 @@ tireTree::node::~node()
     }
 }
 
-tireTree::node::iterator::iterator()
+trieTree::node::iterator::iterator()
 {
     clear();
 }
-tireTree::node::iterator::iterator(const tireTree::node::iterator &iter) :
+trieTree::node::iterator::iterator(const trieTree::node::iterator &iter) :
         m_node(iter.m_node), h(iter.h), m_mid(iter.m_mid), m(iter.m), m_low(
                 iter.m_low), l(iter.l)
 {
 }
-tireTree::node::iterator &tireTree::node::iterator::operator =(
-        const tireTree::node::iterator &iter)
+trieTree::node::iterator &trieTree::node::iterator::operator =(
+        const trieTree::node::iterator &iter)
 {
     m_node = iter.m_node;
     h = iter.h;
@@ -146,11 +146,11 @@ tireTree::node::iterator &tireTree::node::iterator::operator =(
     l = iter.l;
     return *this;
 }
-bool tireTree::node::iterator::valid()
+bool trieTree::node::iterator::valid()
 {
     return m_node && m_node->child && m_mid && m_low;
 }
-void tireTree::node::iterator::clear()
+void trieTree::node::iterator::clear()
 {
     m_node = NULL;
     h = 0;
@@ -159,23 +159,23 @@ void tireTree::node::iterator::clear()
     m_low = NULL;
     l = 0;
 }
-void * tireTree::node::iterator::value()
+void * trieTree::node::iterator::value()
 {
     if (valid())
         return m_low[l];
     else
         return NULL;
 }
-const tireTree::node * tireTree::node::iterator::getNode()
+const trieTree::node * trieTree::node::iterator::getNode()
 {
     return m_node;
 }
-uint8_t tireTree::node::iterator::key()
+uint8_t trieTree::node::iterator::key()
 {
     return h * (1 << (TT_NODE_MID_LEN + TT_NODE_LOW_LEN))
             + m * (1 << TT_NODE_LOW_LEN) + l;
 }
-bool tireTree::node::iterator::next()
+bool trieTree::node::iterator::next()
 {
     if (!valid())
         return false;
@@ -201,9 +201,9 @@ bool tireTree::node::iterator::next()
     }
     return false;
 }
-tireTree::node::iterator tireTree::node::begin()
+trieTree::node::iterator trieTree::node::begin()
 {
-    tireTree::node::iterator iter;
+    trieTree::node::iterator iter;
     iter.m_node = this;
     for (; iter.h < (1 << TT_NODE_HIGH_LEN); iter.h++)
     {
@@ -228,14 +228,14 @@ tireTree::node::iterator tireTree::node::begin()
     iter.clear();
     return iter;
 }
-tireTree::iterator::iterator()
+trieTree::iterator::iterator()
 {
     m_stack.parent = NULL;
     m_top = NULL;
     memset(keyStack, 0, sizeof(keyStack));
     keyStackTop = 0;
 }
-tireTree::iterator::iterator(const iterator & iter)
+trieTree::iterator::iterator(const iterator & iter)
 {
     m_stack.nodeIter = iter.m_stack.nodeIter;
     m_stack.parent = NULL;
@@ -264,8 +264,8 @@ tireTree::iterator::iterator(const iterator & iter)
     else
         newStack->parent = &m_stack;
 }
-tireTree::iterator &tireTree::iterator::operator =(
-        const tireTree::iterator &iter)
+trieTree::iterator &trieTree::iterator::operator =(
+        const trieTree::iterator &iter)
 {
     m_stack.nodeIter = iter.m_stack.nodeIter;
     m_stack.parent = NULL;
@@ -295,11 +295,11 @@ tireTree::iterator &tireTree::iterator::operator =(
         newStack->parent = &m_stack;
     return *this;
 }
-tireTree::iterator::~iterator()
+trieTree::iterator::~iterator()
 {
     clear();
 }
-void tireTree::iterator::clear()
+void trieTree::iterator::clear()
 {
     if (m_top != NULL)
     {
@@ -315,24 +315,24 @@ void tireTree::iterator::clear()
     memset(keyStack, 0, sizeof(keyStack));
     keyStackTop = 0;
 }
-bool tireTree::iterator::valid()
+bool trieTree::iterator::valid()
 {
     return (m_top != NULL && m_top->nodeIter.valid()
             && ((uint64_t)m_top->nodeIter.value() & TT_VALUE_MASK));
 }
-void * tireTree::iterator::value()
+void * trieTree::iterator::value()
 {
     if (!valid())
         return NULL;
     return (void*)((uint64_t)m_top->nodeIter.value() & (~TT_VALUE_MASK));
 }
-const unsigned char *tireTree::iterator::key() //todo
+const unsigned char *trieTree::iterator::key() //todo
 {
     if (!valid())
         return NULL;
     return keyStack;
 }
-bool tireTree::iterator::next()
+bool trieTree::iterator::next()
 {
     bool back = false;
     while (true)
@@ -385,9 +385,9 @@ bool tireTree::iterator::next()
     }
 }
 
-tireTree::iterator tireTree::begin()
+trieTree::iterator trieTree::begin()
 {
-    tireTree::iterator iter;
+    trieTree::iterator iter;
     iter.m_stack.nodeIter = m_root.begin();
     if (!iter.m_stack.nodeIter.valid())
     {
@@ -417,16 +417,16 @@ tireTree::iterator tireTree::begin()
     }
     return iter;
 }
-tireTree::tireTree(int (*valueDestroyFunc)(void* value)) :
+trieTree::trieTree(int (*valueDestroyFunc)(void* value)) :
         m_root(0), m_nodeCount(0), m_valueCount(0), m_valueDestroyFunc(
                 valueDestroyFunc)
 {
 }
-tireTree::~tireTree()
+trieTree::~trieTree()
 {
     clear();
 }
-void tireTree::clear()
+void trieTree::clear()
 {
     iterator iter = begin();
     if (iter.valid())
@@ -477,7 +477,7 @@ void tireTree::clear()
     m_nodeCount = 0;
     m_valueCount = 0;
 }
-int tireTree::insertNCase(const unsigned char * str,void *value)
+int trieTree::insertNCase(const unsigned char * str,void *value)
 {
     node * n = &m_root;
     void * v;
@@ -550,7 +550,7 @@ SEARCH:
         return 0;
     }
 }
-int tireTree::insert(const unsigned char * str, void *value)
+int trieTree::insert(const unsigned char * str, void *value)
 {
     node * n = &m_root;
     void * v;
@@ -620,7 +620,7 @@ int tireTree::insert(const unsigned char * str, void *value)
         return 0;
     }
 }
-void * tireTree::findNCase(const unsigned char * str)
+void * trieTree::findNCase(const unsigned char * str,uint32_t size)
 {
     node * n = &m_root;
     void * v;
@@ -630,7 +630,7 @@ SEARCH:
     c = str[level];
     if(c>='A'&&c<='Z')
         c += 'a'-'A';
-    if (str[level + 1] != '\0')
+    if (str[level + 1] != '\0'&&level<size-1)
     {
         if ((v = n->get(c)) == NULL)
             return NULL;
@@ -657,7 +657,7 @@ SEARCH:
         }
     }
 }
-void * tireTree::find(const unsigned char * str)
+void * trieTree::find(const unsigned char * str,uint32_t size)
 {
     node * n = &m_root;
     void * v;
@@ -666,7 +666,7 @@ void * tireTree::find(const unsigned char * str)
 SEARCH:
     c = str[level];
 
-    if (str[level + 1] != '\0')
+    if (str[level + 1] != '\0'&&level<size-1)
     {
         if ((v = n->get(c)) == NULL)
             return NULL;
@@ -693,4 +693,5 @@ SEARCH:
         }
     }
 }
+
 

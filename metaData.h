@@ -5,8 +5,8 @@
  *      Author: liwei
  */
 
-#ifndef SRC_CONGO_DRC_LIB_MYSQLPARSER_METADATA_H_
-#define SRC_CONGO_DRC_LIB_MYSQLPARSER_METADATA_H_
+#ifndef _METADATA_H_
+#define _METADATA_H_
 #include <string>
 #include <string.h>
 #include <stdint.h>
@@ -51,4 +51,4 @@ struct tableMeta
         m_uniqueKeysCount = 0;
     }
 };
-#endif /* SRC_CONGO_DRC_LIB_MYSQLPARSER_METADATA_H_ */
+#endif /* _METADATA_H_ */

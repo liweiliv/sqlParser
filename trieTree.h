@@ -1,15 +1,15 @@
 /*
- * tireTree.h
+ * trieTree.h
  *
  *  Created on: 2018年11月6日
  *      Author: liwei
  */
 
-#ifndef SRC_CONGO_DRC_LIB_MYSQLPARSER_TIRETREE_H_
-#define SRC_CONGO_DRC_LIB_MYSQLPARSER_TIRETREE_H_
+#ifndef _trieTree_H_
+#define _trieTree_H_
 #include <stdint.h>
 #include <stdlib.h>
-class tireTree
+class trieTree
 {
 private:
     struct node
@@ -58,7 +58,7 @@ public:
             stacks * parent;
         };
     private:
-        friend class tireTree;
+        friend class trieTree;
         stacks m_stack;
         stacks * m_top;
         uint16_t keyStackTop;
@@ -76,14 +76,14 @@ public:
     };
 public:
     iterator begin();
-    tireTree(int (*valueDestroyFunc)(void* value) = NULL);
-    ~tireTree();
+    trieTree(int (*valueDestroyFunc)(void* value) = NULL);
+    ~trieTree();
     void clear();
      int insert(const unsigned char * str,void *value);
      int insertNCase(const unsigned char * str,void *value);
-     void * find(const unsigned char * str);
-     void * findNCase(const unsigned char * str);
+     void * find(const unsigned char * str,uint32_t size = 0xffffffffu);
+     void * findNCase(const unsigned char * str,uint32_t size = 0xffffffffu);
 };
 
 
-#endif /* SRC_CONGO_DRC_LIB_MYSQLPARSER_TIRETREE_H_ */
+#endif /* _trieTree_H_ */

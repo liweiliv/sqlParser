@@ -5,8 +5,8 @@
  *      Author: liwei
  */
 #include <string.h>
-#include "MD.h"
-#include "tireTree.h"
+#include "metaData.h"
+#include "trieTree.h"
 #ifndef likely
 # define likely(x)  __builtin_expect(!!(x), 1)
 #endif
@@ -23,14 +23,14 @@ private:
     };
     struct tableMetaInfo
     {
-        ITableMeta * meta;
+        tableMeta * meta;
         checkpoint begin;
         checkpoint end;
         tableMetaInfo * prev;
     };
     tableMetaInfo * m_current;
 public:
-    tableMetaTimeline(ITableMeta * meta = NULL, uint64_t fileID = 0, uint64_t offset = 0):m_current(NULL)
+    tableMetaTimeline(tableMeta * meta = NULL, uint64_t fileID = 0, uint64_t offset = 0):m_current(NULL)
     {
         if(meta!=NULL)
             put(meta,fileID,offset);
@@ -85,7 +85,7 @@ public:
         }
     }
     /*must be serial*/
-    int  put(ITableMeta * meta, uint64_t fileID, uint64_t offset)
+    int  put(tableMeta * meta, uint64_t fileID, uint64_t offset)
     {
         tableMetaInfo * m = new tableMetaInfo;
         m->begin.fileID = fileID;
@@ -158,7 +158,7 @@ private:
 
 public:
     metaDataCollection():m_dbs(destoryDB){}
-    ITableMeta * get(const char * database,const char * table,uint64_t fileID,uint64_t offset)
+    tableMeta * get(const char * database,const char * table,uint64_t fileID,uint64_t offset)
     {
         tireTree * db = static_cast<tireTree*>(m_dbs.findNCase((const unsigned char*)database));
         if(db == NULL)
@@ -168,7 +168,7 @@ public:
             return NULL;
         return metas->get(fileID,offset);
     }
-    int put(const char * database,const char * table,ITableMeta * meta,uint64_t fileID,uint64_t offset)
+    int put(const char * database,const char * table,tableMeta * meta,uint64_t fileID,uint64_t offset)
     {
         tireTree * db = static_cast<tireTree*>(m_dbs.findNCase((const unsigned char*)database));
         bool newDB = false,newMeta = false;

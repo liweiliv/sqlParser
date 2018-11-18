@@ -4,9 +4,6 @@
  *  Created on: 2018年11月14日
  *      Author: liwei
  */
-
-#ifndef SRC_CONGO_DRC_LIB_MYSQLPARSER_JSON_H_
-#define SRC_CONGO_DRC_LIB_MYSQLPARSER_JSON_H_
 #ifndef JSON_H_
 #define JSON_H_
 #include <list>
@@ -27,6 +24,7 @@ public:
     };
     type t;
     jsonValue(type _t);
+    virtual string toString()=0;
     static type getType(const char * data);
     static jsonValue * Parse(const char* data,int &size);
 };
@@ -36,6 +34,7 @@ public:
     std::string m_value;
     jsonString(const char * data=NULL);
     int parse(const char * data);
+    string toString();
 };
 class jsonNum :public jsonValue
 {
@@ -43,6 +42,7 @@ public:
     long m_value;
     jsonNum(const char * data = NULL);
     int parse(const char * data);
+    string toString();
 };
 class jsonObject :public jsonValue
 {
@@ -58,6 +58,7 @@ public:
     ~jsonObject();
     void clean();
     int parse(const char * data);
+    string toString();
 };
 class jsonArray :public jsonValue
 {
@@ -67,6 +68,7 @@ public:
     ~jsonArray();
     void clean();
     int parse(const char * data);
+    string toString();
 };
 class jsonBool :public jsonValue
 {
@@ -74,6 +76,6 @@ public:
     bool m_value;
     jsonBool(const char * data = NULL);
     int parse(const char * data);
-
+    string toString();
 };
-#endif /* SRC_CONGO_DRC_LIB_MYSQLPARSER_JSON_H_ */
+#endif

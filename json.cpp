@@ -106,6 +106,12 @@ jsonString::jsonString(const char * data ) :
 {
     parse(data);
 }
+string jsonString::toString()
+{
+    string s("\"");
+    s.append(m_value).append("\"");
+    return s;
+}
 int jsonString::parse(const char * data)
 {
     if (data == NULL)
@@ -155,7 +161,12 @@ int jsonNum::parse(const char * data)
         m_value = -m_value;
     return ptr - data;
 }
-
+string jsonNum::toString()
+{
+    char buf[32] = {0};
+    sprintf(buf,"%ld",m_value);
+    return buf;
+}
 jsonObject::jsonObject(const char * data ) :
         jsonValue(OBJECT)
 {
@@ -254,6 +265,25 @@ int jsonObject::parse(const char * data)
     }
     return ptr - data + 1;
 }
+string jsonObject::toString()
+{
+    string s = "{";
+    bool first = true;
+    for(list<ObjectKV*>::iterator i = m_values.begin(); i != m_values.end();i++)
+    {
+        ObjectKV * v = *i;
+        if(v!=NULL)
+        {
+            if(!first)
+                s.append(",");
+            else
+                first = false;
+            s.append(v->key->toString()).append(":").append(v->value->toString());
+        }
+    }
+    s.append("}");
+    return s;
+}
 jsonArray::jsonArray(const char * data) :
         jsonValue(ARRAY)
 {
@@ -315,6 +345,25 @@ int jsonArray::parse(const char * data)
     }
     return ptr - data + 1;
 }
+string jsonArray::toString()
+{
+    string s = "[";
+    bool first = true;
+    for(list<jsonValue*>::iterator i = m_values.begin(); i != m_values.end();i++)
+    {
+        jsonValue * v = *i;
+        if(v!=NULL)
+        {
+            if(!first)
+                s.append(",");
+            else
+                first = false;
+            s+=v->toString();
+        }
+    }
+    s.append("]");
+    return s;
+}
 jsonBool::jsonBool(const char * data):jsonValue(BOOL),m_value(false)
 {
     parse(data);
@@ -342,6 +391,9 @@ int jsonBool::parse(const char * data)
     else
         return -1;
 }
-
+string jsonBool::toString()
+{
+    return m_value?"true":"false";
+}
 
 
