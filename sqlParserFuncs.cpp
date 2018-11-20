@@ -9,7 +9,7 @@
 namespace sqlParser{
 #define  NOT_FIXED_DEC 31
 #define getLastTable(h) (*(h)->meta.newTables.rbegin())
-#define getLastColumn(h) *((getLastTable(h))>newColumns.rbegin())
+#define getLastColumn(h) *((getLastTable(h))->newColumns.rbegin())
 
   extern "C" parseValue bitType(handle * h, const string& sql)
  {
@@ -122,6 +122,12 @@ namespace sqlParser{
   {
       newColumnInfo *c = getLastColumn(h);
       c->type = MYSQL_TYPE_TIMESTAMP;
+      return OK;
+  }
+  extern "C" parseValue dateType(handle * h, const string& sql)
+  {
+      newColumnInfo *c = getLastColumn(h);
+      c->type = MYSQL_TYPE_DATE;
       return OK;
   }
   extern "C" parseValue timestampTypePrec(handle * h, const string& sql)
@@ -340,7 +346,7 @@ namespace sqlParser{
   extern "C" parseValue primaryKeys(handle * h, const string& sql)
   {
       newTableInfo * t = getLastTable(h);
-      list<newKeyInfo*>::iterator iter = t->newKeys.rbegin();
+      list<newKeyInfo*>::reverse_iterator iter = t->newKeys.rbegin();
       newKeyInfo *k;
       if(iter!=t->newKeys.rend()&&(*iter)->type == newKeyInfo::MAX_KEY_TYPE)
           k = (*iter);
@@ -355,7 +361,7 @@ namespace sqlParser{
   extern "C" parseValue uniqueKeys(handle * h, const string& sql)
   {
       newTableInfo * t = getLastTable(h);
-      list<newKeyInfo*>::iterator iter = t->newKeys.rbegin();
+      list<newKeyInfo*>::reverse_iterator iter = t->newKeys.rbegin();
       newKeyInfo *k;
       if(iter!=t->newKeys.rend()&&(*iter)->type == newKeyInfo::MAX_KEY_TYPE)
           k = (*iter);
@@ -397,13 +403,13 @@ namespace sqlParser{
   extern "C" parseValue NewTableDBName(handle * h, const string& sql)
   {
       newTableInfo * t = getLastTable(h);
-      t->database = sql;
+      t->table.database = sql;
       return OK;
   }
   extern "C" parseValue NewTableName(handle * h, const string& sql)
   {
       newTableInfo * t = getLastTable(h);
-      t->table = sql;
+      t->table.table = sql;
       return OK;
   }
   extern "C" parseValue  createTableLike(handle * h, const string& sql)
@@ -415,14 +421,202 @@ namespace sqlParser{
   extern "C" parseValue  NewTableLikedDBName(handle * h, const string& sql)
   {
       newTableInfo * t = getLastTable(h);
-      t->likedDatabase = sql;
+      t->likedTable.database = sql;
       return OK;
   }
   extern "C" parseValue  NewTableLikedTableName(handle * h, const string& sql)
   {
       newTableInfo * t = getLastTable(h);
-      t->likedTable = sql;
+      t->likedTable.table = sql;
       return OK;
   }
+  extern "C" parseValue  AlterNewColumnAtFirst(handle * h, const string& sql)
+  {
+      newColumnInfo *c = getLastColumn(h);
+      c->after = false;
+      c->index = 0;
+      return OK;
+  }
+  extern "C" parseValue  AlterNewColumnAfter(handle * h, const string& sql)
+  {
+      newColumnInfo *c = getLastColumn(h);
+      c->after = true;
+      c->afterColumnName = sql;
+      return OK;
+  }
+  extern "C" parseValue  dropIndex(handle * h, const string& sql)
+  {
+      newTableInfo * t = getLastTable(h);
+      t->oldKeys.push_back(sql);
+      return OK;
+  }
+  extern "C" parseValue  alterChangeColumn(handle * h, const string& sql)
+  {
+      newTableInfo * t = getLastTable(h);
+      newColumnInfo *c = getLastColumn(h);
+      c->after = true;
+      c->afterColumnName = *t->oldColumns.rbegin();
+      return OK;
+  }
+  extern "C" parseValue  alterChangeColumnName(handle * h, const string& sql)
+  {
+      newTableInfo * t = getLastTable(h);
+      t->oldColumns.push_back(sql);
+      return OK;
+  }
+  extern "C" parseValue  dropColumn(handle * h, const string& sql)
+  {
+      newTableInfo * t = getLastTable(h);
+      t->oldColumns.push_back(sql);
+      return OK;
+  }
+  extern "C" parseValue  dropPrimaryKey(handle * h, const string& sql)
+  {
+      newTableInfo * t = getLastTable(h);
+      t->oldKeys.push_back("PRIMARY");
+      return OK;
+  }
+  extern "C" parseValue  dropForeignKey(handle * h, const string& sql)
+  {
+      newTableInfo * t = getLastTable(h);
+      t->oldKeys.push_back(sql);
+      return OK;
+  }
+  extern "C" parseValue  alterTable(handle * h, const string& sql)
+  {
+      newTableInfo * t = new newTableInfo;
+      t->type = newTableInfo::ALTER_TABLE;
+      h->meta.newTables.push_back(t);
+      return OK;
+  }
+  extern "C" parseValue  alterTableDbName(handle * h, const string& sql)
+  {
+      newTableInfo * t = getLastTable(h);
+      t->table.database = sql;
+      return OK;
+  }
+  extern "C" parseValue  alterTableTableName(handle * h, const string& sql)
+  {
+      newTableInfo * t = getLastTable(h);
+      t->table.table = sql;
+      return OK;
+  }
+  extern "C" parseValue  createUK(handle * h, const string& sql)
+  {
+      newTableInfo * t = new newTableInfo;
+      t->type = newTableInfo::ALTER_TABLE;
+      newKeyInfo * k =new newKeyInfo;
+      k->type = newKeyInfo::UNIQUE_KEY;
+      t->newKeys.push_back(k);
+      h->meta.newTables.push_back(t);
+      return OK;
+  }
+  /*now we only parse uk ,key/index not parse*/
+  extern "C" parseValue  createUKName(handle * h, const string& sql)
+  {
+      newTableInfo * t = getLastTable(h);
+      if(t!=NULL&&t->table.database.empty()&&t->table.table.empty()&&t->type == newTableInfo::ALTER_TABLE&&t->newKeys.size()==1&&(*(t->newKeys.begin()))->type==newKeyInfo::UNIQUE_KEY)
+          (*(t->newKeys.begin()))->name = sql;
+      return OK;
+  }
+  extern "C" parseValue  createUKONDatabaseName(handle * h, const string& sql)
+  {
+      newTableInfo * t = getLastTable(h);
+      if(t!=NULL&&t->table.database.empty()&&t->table.table.empty()&&t->type == newTableInfo::ALTER_TABLE&&t->newKeys.size()==1&&(*(t->newKeys.begin()))->type==newKeyInfo::UNIQUE_KEY)
+          t->table.database = sql;
+      return OK;
+  }
+  extern "C" parseValue  createUKONTableName(handle * h, const string& sql)
+  {
+      newTableInfo * t = getLastTable(h);
+      if(t!=NULL&&t->table.table.empty()&&t->type == newTableInfo::ALTER_TABLE&&t->newKeys.size()==1&&(*(t->newKeys.begin()))->type==newKeyInfo::UNIQUE_KEY)
+          t->table.table = sql;
+      return OK;
+  }
+  extern "C" parseValue  tableName(handle * h, const string& sql)
+  {
+      newTableInfo * t = getLastTable(h);
+      if(t!=NULL&&t->table.table.empty()&&t->type == newTableInfo::ALTER_TABLE&&t->newKeys.size()==1&&(*(t->newKeys.begin()))->type==newKeyInfo::UNIQUE_KEY)
+          t->table.table = sql;
+      return OK;
+  }
+  extern "C" parseValue  createUkByColumn(handle * h, const string& sql)
+  {
+      newTableInfo * t = getLastTable(h);
+      if(t!=NULL&&t->table.database.empty()&&t->table.table.empty()&&t->type == newTableInfo::ALTER_TABLE&&t->newKeys.size()==1&&(*(t->newKeys.begin()))->type==newKeyInfo::UNIQUE_KEY)
+          (*(t->newKeys.begin()))->columns.push_back(sql);
+      return OK;
+  }
+  extern "C" parseValue  dropIndexName(handle * h, const string& sql)
+  {
+      newTableInfo * t = new newTableInfo;
+      t->type = newTableInfo::ALTER_TABLE;
+      t->oldColumns.push_back(sql);
+      h->meta.newTables.push_back(t);
+      return OK;
+  }
+  /*now we only parse uk ,key/index not parse*/
+  extern "C" parseValue  dropIndexOnDataBaseName(handle * h, const string& sql)
+  {
+      newTableInfo * t = getLastTable(h);
+      t->table.database = sql;
+      return OK;
+  }
+  extern "C" parseValue  dropIndexOnTableName(handle * h, const string& sql)
+  {
+      newTableInfo * t = getLastTable(h);
+      t->table.table = sql;
+      return OK;
+  }
+  extern "C" parseValue  dropTable(handle * h, const string& sql)
+  {
+      h->meta.oldTables.push_back(Table());
+      return OK;
+  }
+  extern "C" parseValue  dropTableDatabaseName(handle * h, const string& sql)
+  {
+      (*h->meta.oldTables.rbegin()).database = sql;
+      return OK;
+  }
+  extern "C" parseValue  dropTableTableName(handle * h, const string& sql)
+  {
+      (*h->meta.oldTables.rbegin()).table = sql;
+      return OK;
+  }
+  extern "C" parseValue  renameTableDatabaseName(handle * h, const string& sql)
+  {
+      h->meta.oldTables.push_back(Table(sql,""));
+      return OK;
+  }
+  extern "C" parseValue  renameTableTableName(handle * h, const string& sql)
+  {
+      Table & t = *h->meta.oldTables.rbegin();
+      if(t.table.empty()&&!t.database.empty())
+          t.table =sql;
+      else
+          h->meta.oldTables.push_back(Table("",sql));
+      return OK;
+  }
+  extern "C" parseValue  renameNewTable(handle * h, const string& sql)
+  {
+      newTableInfo * t = new newTableInfo();
+      t->createLike = true;
+      t->likedTable = *h->meta.oldTables.rbegin();
+      h->meta.newTables.push_back(t);
+      return OK;
+  }
+  extern "C" parseValue  renameTableToDatabaseName(handle * h, const string& sql)
+   {
+      newTableInfo * t = getLastTable(h);
+      t->table.database =sql;
+      return OK;
+   }
+  extern "C" parseValue  renameTableToTableName(handle * h, const string& sql)
+   {
+       newTableInfo * t = getLastTable(h);
+       t->table.table =sql;
+       return OK;
+   }
+
 }
 

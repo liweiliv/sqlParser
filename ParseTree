@@ -9,7 +9,7 @@
 			{"K":"_S_:BIT","F":"bitType"},
 			{"OPT":true,"C":[
 				{"K":"_C_:("},
-				{"K":"_NUM_:","F":"bitTypeSize"},
+				{"K":"_NUM_","F":"bitTypeSize"},
 				{"K":"_C_:)"}
 			]}
 		]},
@@ -107,7 +107,7 @@
 				]},
 				{"K":"_C_:)"}
 			]},
-			{"OPT":true,"K":"_S_:UNSIGNED","F","numertypeIsUnsigned"},
+			{"OPT":true,"K":"_S_:UNSIGNED","F":"numertypeIsUnsigned"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
 		{
@@ -116,7 +116,7 @@
 			{"K":"_S_:DATETIME","F":"datetimeType"},
 			{"OPT":true,"C":[
 				{"K":"_C_:("},
-				{"K":"_NUM_:","F":"datetimeTypePrec"},
+				{"K":"_NUM_","F":"datetimeTypePrec"},
 				{"K":"_C_:)"}
 			]}
 		]},
@@ -126,7 +126,7 @@
 			{"K":"_S_:TIMESTAMP","F":"timestampType"},
 			{"OPT":true,"C":[
 				{"K":"_C_:("},
-				{"K":"_NUM_:","F":"timestampTypePrec"},
+				{"K":"_NUM_","F":"timestampTypePrec"},
 				{"K":"_C_:)"}
 			]}
 		]},
@@ -135,7 +135,7 @@
 			{"K":"_S_:TIME","F":"timeType"},
 			{"OPT":true,"C":[
 				{"K":"_C_:("},
-				{"K":"_NUM_:","F":"timeTypePrec"},
+				{"K":"_NUM_","F":"timeTypePrec"},
 				{"K":"_C_:)"}
 			]}
 		]},
@@ -144,7 +144,7 @@
 			{"K":"_S_:YEAR","F":"yearType"},
 			{"OPT":true,"C":[
 				{"K":"_C_:("},
-				{"K":"_NUM_:","F":"yearTypePrec"},
+				{"K":"_NUM_","F":"yearTypePrec"},
 				{"K":"_C_:)"}
 			]}
 		]},
@@ -157,9 +157,9 @@
 				]},
 				{"OPT":true,"C":[
 					{"K":"_C_:("},
-					{"K":"_NUM_:","F":"stringTypeSize"},
+					{"K":"_NUM_","F":"stringTypeSize"},
 					{"K":"_C_:)"}
-				]}
+				]},
 				{"OPT":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
 					{"K":"_AS_","F":"stringTypeCharSet"}
@@ -174,7 +174,7 @@
 			{"K":"_S_:BINARY","F":"binaryType"},
 			{"OPT":true,"C":[
 				{"K":"_C_:("},
-				{"K":"_NUM_:","F":"stringTypeSize"},
+				{"K":"_NUM_","F":"stringTypeSize"},
 				{"K":"_C_:)"}
 			]}
 		]},
@@ -183,7 +183,7 @@
 			{"K":"_S_:VARBINARY","F":"varbinaryType"},
 			{"OPT":true,"C":[
 				{"K":"_C_:("},
-				{"K":"_NUM_:","F":"stringTypeSize"},
+				{"K":"_NUM_","F":"stringTypeSize"},
 				{"K":"_C_:)"}
 			]}
 		]},
@@ -488,7 +488,7 @@
 						]},
 						{"K":"_C_:("},
 						{"LOOP":true,"C":[
-							{"K":"_N_","keyColumn"},
+							{"K":"_N_","F":"keyColumn"},
 							{"OPT":true,"K":"_B_"},
 							{"OPT":true,"K":"_B_"},
 							{"OPT":true,"OR":true,"C":[
@@ -518,7 +518,7 @@
 					]},
 					{"K":"_C_:("},
 						{"LOOP":true,"C":[
-							{"K":"_N_","keyColumn"},
+							{"K":"_N_","F":"keyColumn"},
 							{"OPT":true,"K":"_B_"},
 							{"OPT":true,"K":"_B_"},
 							{"OPT":true,"OR":true,"C":[
@@ -831,7 +831,7 @@
 					"C":[
 					{"K":"_N_","F":"NewTableDBName"},
 					{"K":"_C_:."},
-					{"K":"_N_","NewTableName"}
+					{"K":"_N_","F":"NewTableName"}
 				]},
 				{"K":"_N_","COMMENT":"create table tableName","F":"NewTableName"}
 			]}
@@ -871,7 +871,7 @@
 	"COMMENT":"alter table add column",
 	"C":[
 		{"K":"_S_:ADD"},
-		{"K":"_S_:COLUMN","F":"AlterNewColumn"},
+		{"K":"_S_:COLUMN"},
 		{"INCLUDE":0},
 		{"OPT":true,"OR":true,"C":
 			[
@@ -890,7 +890,7 @@
 	"C":[
 		{"K":"_S_:ADD"},
 		{"K":"_S_:COLUMN"},
-		{"K":"_C_:(","F":"alterNewColumns"},
+		{"K":"_C_:("},
 		{"INCLUDE":0},
 		{"K":"_C_:)"}
 	]
@@ -902,14 +902,14 @@
 	"COMMENT":"alter table MODIFY  column",
 	"C":[
 		{"K":"_S_:MODIFY"},
-		{"OPT":true,"K":"_S_:COLUMN","F":"alterModifiyColumn"},
+		{"OPT":true,"K":"_S_:COLUMN"},
 		{"INCLUDE":0},
 		{"OPT":true,"OR":true,"C":
 			[
-			{"K":"_S_:FIRST","F":"AlterModifyColumnAtFirst"},
+			{"K":"_S_:FIRST","F":"AlterNewColumnAtFirst"},
 			{"C":[
 				{"K":"_S_:AFTER"},
-				{"K":"_N_","F":"AlterModifyColumnAfter"}
+				{"K":"_N_","F":"AlterNewColumnAfter"}
 			]}
 		]}
 	]
@@ -959,24 +959,25 @@
 			{"K":"_S_:KEY"},
 			{"K":"_S_:INDEX"}
 		]},
-		{"K":"_N_"}
+		{"K":"_N_","F":"dropIndex"}
 	]
 }
 {
 	"ID":10060,
 	"OPT":true,
 	"COMMENT":"alter table change column",
+	"F":"alterChangeColumn",
 	"C":[
 		{"K":"_S_:CHANGE"},
 		{"OPT":true,"K":"_S_:COLUMN"},
-		{"K":"_N_","F":"alterChangeColumn"},
+		{"K":"_N_","F":"alterChangeColumnName"},
 		{"INCLUDE":0},
 		{"OPT":true,"OR":true,"C":
 			[
-			{"K":"_S_:FIRST","F":"alterChangeColumnAtFirst"},
+			{"K":"_S_:FIRST","F":"AlterNewColumnAtFirst"},
 			{"C":[
 				{"K":"_S_:AFTER"},
-				{"K":"_N_","F":"alterChangeColumnAfter"}
+				{"K":"_N_","F":"AlterNewColumnAfter"}
 			]}
 		]}
 	]
@@ -1033,7 +1034,7 @@
 					{"K":"_C_:."},
 					{"K":"_N_","F":"alterTableTableName"}
 				]},
-				{"K":"_N_","COMMENT":"alter table tableName","F":"alterTableOnlyTableName"}
+				{"K":"_N_","COMMENT":"alter table tableName","F":"alterTableTableName"}
 			]}
 		]},
 		{
@@ -1079,7 +1080,7 @@
 			{"K":"_S_:SPATIAL"}
 		]},
 		{"K":"_S_:INDEX"},
-		{"K":"_N_"},
+		{"K":"_N_","F":"createUKName"},
 		{"OPT":true,
 			"C":[
 			{"K":"_S_:USING"},
@@ -1096,7 +1097,7 @@
 				{"K":"_C_:."},
 				{"K":"_N_","F":"createUKONTableName"}
 			]},
-			{"K":"_N_","COMMENT":"tableName","F":"createUKONOnlyTableName"}
+			{"K":"_N_","COMMENT":"tableName","F":"createUKONTableName"}
 		]},
 		{"K":"_C_:("},
 		{"LOOP":true,
@@ -1141,7 +1142,7 @@
 	"HEAD":true,
 	"C":[
 		{"K":"_S_:DROP"},
-		{"K":"_S_:INDEX","F":"dropIndex"},
+		{"K":"_S_:INDEX"},
 		{"OPT":true,"C":[
 			{"K":"_S_:ONINE"},
 			{"K":"_S_:OFFLINE"}
@@ -1155,7 +1156,7 @@
 				{"K":"_C_:."},
 				{"K":"_N_","F":"dropIndexOnTableName"}
 			]},
-			{"K":"_N_","COMMENT":"tableName","F":"dropIndexOnOnlyTableName"}				
+			{"K":"_N_","COMMENT":"tableName","F":"dropIndexOnTableName"}				
 		]},
 		{"OR":true,"OPT":true,"C":[
 			{"C":[
@@ -1198,7 +1199,7 @@
 					{"K":"_C_:.","F":"dropTableTableName"},
 					{"K":"_N_"}
 				]},
-				{"K":"_N_","COMMENT":"tableName","F":"dropTableOnlyTableName"}				
+				{"K":"_N_","COMMENT":"tableName","F":"dropTableTableName"}				
 			]},
 			{"OPT":true,"K":"_C_:,"}
 		]},
@@ -1215,7 +1216,7 @@
 	"HEAD":true,
 	"C":[
 		{"K":"_S_:RENAME"},
-		{"K":"_S_:TABLE","F":"renameTable"},
+		{"K":"_S_:TABLE"},
 		{"LOOP":true,"C":[
 			{"OR":true,"C":[
 			{"COMMENT":"dbName.tableName",
@@ -1224,9 +1225,9 @@
 				{"K":"_C_:."},
 				{"K":"_N_","F":"renameTableTableName"}
 				]},
-			{"K":"_N_","COMMENT":"tableName","F":"renameTableOnlyTableName"}				
+			{"K":"_N_","COMMENT":"tableName","F":"renameTableTableName"}				
 			]},
-			{"K":"_S_:TO"},
+			{"K":"_S_:TO","F":"renameNewTable"},
 			{"OR":true,"C":[
 			{"COMMENT":"dbName.tableName",
 				"C":[
@@ -1234,7 +1235,7 @@
 				{"K":"_C_:."},
 				{"K":"_N_","F":"renameTableToTableName"}
 				]},
-			{"K":"_N_","COMMENT":"tableName","F":"renameTableToOnlyTableName"}				
+			{"K":"_N_","COMMENT":"tableName","F":"renameTableToTableName"}				
 			]},
 			{"OPT":true,"K":"_C_:,"}
 		]}

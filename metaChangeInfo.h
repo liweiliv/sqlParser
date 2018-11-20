@@ -39,13 +39,31 @@ typedef enum enum_field_types {
 using namespace std;
 namespace sqlParser
 {
+struct Table
+{
+    string database;
+    string table;
+    Table(){}
+    Table(const Table&t):database(t.database),table(t.table){}
+    Table(const string &db,const string &tab):database(db),table(tab){}
+    Table &operator =(const Table &t)
+    {database = t.database;
+    table = t.table;
+    return *this;}
+};
 class newColumnInfo
 {
 public:
+    enum colummDDLType{
+        COLUMN_IN_CREATE_TABLE,
+        COLUMN_IN_ADD_COLUMN,
+        COLUMN_IN_MODIFY_COLUMN,
+        COLUMN_IN_CHANGE_COLUMN
+    };
     string name;
     uint8_t type;
     bool after;
-    uint32_t index;
+    int index;
     string afterColumnName;
     bool isString;
     string charset;
@@ -57,7 +75,7 @@ public:
     bool m_isPrimary;
     bool m_isUnique;
     bool m_generated;
-    newColumnInfo():type(0),after(false),index(0),isString(false),size(0),precision(0),
+    newColumnInfo():type(0),after(false),index(-1),isString(false),size(0),precision(0),
             decimals(0),m_signed(true),m_isPrimary(false),m_isUnique(false),m_generated(false)
     {
 
@@ -92,12 +110,9 @@ public:
         MAX_TABLE_TYPE
     };
     tableChangeType type;
-    string database;
-    string table;
+    Table table;
     bool createLike;
-    string likedDatabase;
-    string likedTable;
-
+    Table likedTable;
     string defaultCharset;
     list<newColumnInfo*> newColumns;
     list<string> oldColumns;
@@ -117,8 +132,9 @@ public:
 struct metaChangeInfo
 {
 public:
+    string usedDatabase;
     list<newTableInfo*> newTables;
-    list<string> oldTables;
+    list<Table> oldTables;
     ~metaChangeInfo()
     {
         for(list<newTableInfo*>::iterator iter = newTables.begin();iter!=newTables.end();iter++)
@@ -134,7 +150,8 @@ struct statusInfo
 {
     parseValue (*parserFunc)(handle* h,const string &sql);
     string sql;
-    statusInfo * prev;
+    statusInfo * next;
+    statusInfo():parserFunc(NULL),next(NULL){}
 };
 struct handle
 {
@@ -149,15 +166,15 @@ struct handle
     }
     ~handle()
     {
-        if(end!=NULL)
+        if(head!=NULL)
         {
-            while(end!=NULL)
+            while(head!=NULL)
             {
-                statusInfo * tmp = end->prev;
-                delete end;
+                statusInfo * tmp = head->next;
+                delete head;
                 if(head == end)
                     break;
-                end = tmp;
+                head = tmp;
             }
         }
         /*不递归调用next的析构函数，使用循环的方式，

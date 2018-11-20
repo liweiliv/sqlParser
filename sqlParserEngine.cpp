@@ -37,6 +37,7 @@ public:
         SQL_ARRAY, SQL_SIGNLE_WORD
     };
     SQLWordType m_type;
+    parseValue (*m_parser)(handle * h, const string &sql);
     virtual parseValue match(handle * h, const char *& sql) = 0;
     void include()
     {
@@ -46,7 +47,8 @@ public:
     {
         return --m_refs==0;
     }
-    SQLWord( SQLWordType t, bool optional = false) : m_type(t), m_optional(optional), m_refs(0),m_id(0)
+    SQLWord( SQLWordType t, bool optional = false) : m_type(t), m_parser(
+            NULL),m_optional(optional), m_refs(0),m_id(0)
     {
     }
 };
@@ -66,11 +68,9 @@ public:
 
     string m_word;
     sqlSingleWordType m_wtype;
-    parseValue (*m_parser)(handle * h, string sql);
     SQLSingleWord(bool optional, sqlSingleWordType type,
             string word) :
-            SQLWord(SQL_SIGNLE_WORD, optional), m_word(word), m_wtype(type), m_parser(
-                    NULL)
+            SQLWord(SQL_SIGNLE_WORD, optional), m_word(word), m_wtype(type)
     {
     }
 #ifdef DEBUG
@@ -261,13 +261,16 @@ public:
             return NOT_SUPPORT;
         }
 
-        if(rtv==OK&&m_parser!=NULL)
+        if (rtv == OK && m_parser != NULL)
         {
-        	statusInfo * s = new statusInfo;
-        	s->sql = matchedWord;
-        	s->prev = h->end;
-        	h->end = s;
-        	s->parserFunc = m_parser;
+            statusInfo * s = new statusInfo;
+            s->sql = matchedWord;
+            s->parserFunc = m_parser;
+            if (h->head == NULL)
+                h->head = s;
+            else
+                h->end->next = s;
+            h->end = s;
         }
 #ifdef DEBUG
         if(rtv==OK)
@@ -364,16 +367,28 @@ public:
 
         if (rtv != OK)
         {
-            for (statusInfo * s = h->end; s != top;)
+            for (statusInfo * s = top?top->next:NULL; s != NULL;)
             {
-                statusInfo * tmp = s->prev;
+                statusInfo * tmp = s->next;
                 delete s;
                 s = tmp;
             }
             h->end = top;
         }
         if(rtv!=OK)
+        {
+            if(m_parser!=NULL)
+            {
+                statusInfo * s = new statusInfo;
+                s->parserFunc = m_parser;
+                if(h->head==NULL)
+                    h->head = s;
+                else
+                    h->end->next =s;
+                h->end = s;
+            }
             sql = tmp;
+        }
 #ifdef DEBUG
         if(rtv==OK)
             printf("%d,%s \033[1m\033[40;32mmatch \033[0m:%s \n",m_id,m_comment.c_str(),tmp);
@@ -482,7 +497,7 @@ private:
                 {
                     SET_STACE_LOG_AND_RETURN_(NULL, -1, "expect STRING type :%s",static_cast<jsonString*>(value)->m_value.c_str());
                 }
-                if(NULL == (static_cast<SQLSingleWord*>(s)->m_parser = (parseValue (*)(handle *,string))dlsym(m_funcsHandel, static_cast<jsonString*>(value)->m_value.c_str())))
+                if(NULL == (static_cast<SQLSingleWord*>(s)->m_parser = (parseValue (*)(handle *,const string&))dlsym(m_funcsHandel, static_cast<jsonString*>(value)->m_value.c_str())))
                     {
                     SET_STACE_LOG_AND_RETURN_(NULL, -1, "can not get func %s in funcs", static_cast<jsonString*>(value)->m_value.c_str());
                     }
@@ -564,32 +579,32 @@ public:
         {
             return -1;
         }
-        char soName[256]={0};
+        string soName;
         string compileCmd;
         const char * end = fileName+strlen(fileName);
         while(*end!='.'&&end!=fileName)
             end--;
         if(end == fileName)
             end = fileName+strlen(fileName);
-        sprintf(soName,"lib%*s.so",end-fileName,fileName);
-        if(!fileExist(soName))
+        soName =string("lib").append(fileName,end-fileName).append(".so");
+        if(!fileExist(soName.c_str()))
             goto COMPILE;
-        if(getFileTime(fileName)>=getFileTime(soName))
-            remove(soName);
+        if(getFileTime(fileName)>=getFileTime(soName.c_str()))
+            remove(soName.c_str());
         else
             goto LOAD;
 COMPILE:
-        compileCmd.assign("gcc -shared -o -g -fPic -Wall");
+        compileCmd.assign("g++ -shared -g -fPIC -Wall -o ");
         compileCmd.append(soName).append(" ").append(fileName);
         if(system(compileCmd.c_str())!=0)
             return -2;
 LOAD:
         if(m_funcsHandel!=NULL)
             dlclose(m_funcsHandel);
-        m_funcsHandel = dlopen(soName,RTLD_NOW);
+        m_funcsHandel = dlopen(string("./").append(soName).c_str(),RTLD_NOW);
         if(m_funcsHandel==NULL)
         {
-            fprintf(stderr, "load %s failed for %s\n",soName, dlerror());
+            fprintf(stderr, "load %s failed for %s\n",soName.c_str(), dlerror());
             return -3;
         }
         return 0;
@@ -686,12 +701,12 @@ public:
                 SQLWord * s = static_cast<SQLWord*>(iter->second);
                 if (s->match(h, tmp) != OK)
                 {
-                //    printf("%d,%s \033[1m\033[40;31m not match \033[0m:%.*s\n",iter->first,s->m_comment.c_str(),100,sql);
+                    printf("%d,%s \033[1m\033[40;31m not match \033[0m:%.*s\n",iter->first,s->m_comment.c_str(),100,sql);
                     continue;
                 }
                 else
                 {
-               //    printf("%d,%s \033[1m\033[40;32m match \033[0m:%.*s\n",iter->first,s->m_comment.c_str(),100,sql);
+                  printf("%d,%s \033[1m\033[40;32m match \033[0m:%.*s\n",iter->first,s->m_comment.c_str(),100,sql);
                     sql = nextWord(tmp);
                     goto PARSE_SUCCESS;
                 }
@@ -710,6 +725,7 @@ PARSE_SUCCESS:
                             delete h;
                             return NOT_MATCH;
                         }
+                    s = s->next;
                 }
             while(sql[0]==';')
                 sql = nextWord(sql+1);
@@ -729,6 +745,10 @@ int main(int argc,char * argv[])
     sqlParser::sqlParser p;
     initStackLog();
     initKeyWords();
+   if(0!=p.LoadFuncs("sqlParserFuncs.cpp"))
+    {
+        printf("load funcs failed\n");
+    }
    if(0!=p.LoadParseTreeFromFile("ParseTree"))
     {
         printf("load parse tree failed\n");
