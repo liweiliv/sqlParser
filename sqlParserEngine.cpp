@@ -20,57 +20,11 @@
 #include "stackLog.h"
 #include "json.h"
 #include "SQLStringUtil.h"
+#include "metaChangeInfo.h"
 using namespace std;
 namespace sqlParser
 {
-enum parseValue
-{
-    OK, NOT_MATCH, INVALID, COMMENT, NOT_SUPPORT
-};
-class statusInfo
-{
-public:
-    enum statusNO
-    {
-        start, create, createTable, createTableLike, newColumn, constraint
-    };
-    statusNO m_type;
-    statusInfo * prev;
-    statusInfo(statusNO type) :
-            m_type(type), prev(NULL)
-    {
-    }
-};
-struct handle
-{
-    string dbName;
-    statusInfo * head;
-    statusInfo * end;
-    handle * next;
-    handle() :
-            head(NULL), end(NULL),next(NULL)
-    {
-    }
-    ~handle()
-    {
-        if(end!=NULL)
-        {
-            while(end!=NULL)
-            {
-                statusInfo * tmp = end->prev;
-                delete end;
-                if(head == end)
-                    break;
-                end = tmp;
-            }
-        }
-        if(next)
-        {
-            delete next;
-            next = NULL;
-        }
-    }
-};
+
 class SQLWord
 {
 public:
@@ -132,6 +86,7 @@ public:
     {
         const char * p = nextWord(sql),*tmp =sql;
         parseValue rtv = OK;
+        string matchedWord;
         switch (m_wtype)
         {
         case BRACKETS:
@@ -154,7 +109,7 @@ public:
             if (*end == '\0')
                 N_MATCH;
             if (m_parser != NULL)
-                rtv = m_parser(h, string(p, end - p));
+            	matchedWord.assign(p, end - p);
             sql = end + 1;
             break;
         }
@@ -166,7 +121,7 @@ public:
             if (m_word[0] != c)
                 N_MATCH;
             if (m_parser != NULL)
-                rtv = m_parser(h, string(p, 1));
+            	matchedWord = string(p, 1);
             sql = p + 1;
             break;
         }
@@ -178,7 +133,7 @@ public:
             if(isKeyWord(p,end-p))
                 N_MATCH
             if (m_parser != NULL)
-                rtv = m_parser(h, string(p, end - p));
+            	matchedWord = string(p, end - p);
             if (rtv != OK)
                 return rtv;
             sql = end;
@@ -196,7 +151,7 @@ public:
                     N_MATCH
             }
             if (m_parser != NULL)
-                rtv = m_parser(h, string(nameStart, nameSize));
+            	matchedWord = string(nameStart, nameSize);
             if (rtv != OK)
                 return rtv;
             sql = nameEnd;
@@ -208,7 +163,7 @@ public:
                     || (!isSpaceOrComment(p + m_word.size())&&!isKeyChar(p[m_word.size()])))
                 N_MATCH
             if (m_parser != NULL)
-                rtv = m_parser(h, m_word);
+            	matchedWord = m_word;
             if (rtv != OK)
                 return rtv;
             sql = p + m_word.size();
@@ -248,7 +203,7 @@ public:
             if (*end == '\0')
                 N_MATCH
             if (m_parser != NULL)
-                rtv = m_parser(h, string(p + 1, end - p - 1));
+            	matchedWord = string(p + 1, end - p - 1);
             if (rtv != OK)
                 return rtv;
             sql = end + 1;
@@ -296,7 +251,7 @@ public:
                 n++;
             }
             if (m_parser != NULL)
-                rtv = m_parser(h, string(p, n - p));
+            	matchedWord = string(p, n - p);
             if (rtv != OK)
                 return rtv;
             sql = n;
@@ -304,6 +259,15 @@ public:
         }
         default:
             return NOT_SUPPORT;
+        }
+
+        if(rtv==OK&&m_parser!=NULL)
+        {
+        	statusInfo * s = new statusInfo;
+        	s->sql = matchedWord;
+        	s->prev = h->end;
+        	h->end = s;
+        	s->parserFunc = m_parser;
         }
 #ifdef DEBUG
         if(rtv==OK)
@@ -737,15 +701,25 @@ public:
            h = NULL;
            return NOT_MATCH;
 PARSE_SUCCESS:
+            statusInfo * s = h->head;
+             while(s)
+                {
+                    if(s->parserFunc)
+                        if(OK!=s->parserFunc(h,s->sql))
+                        {
+                            delete h;
+                            return NOT_MATCH;
+                        }
+                }
             while(sql[0]==';')
                 sql = nextWord(sql+1);
             if(sql[0]=='\0')//sql has finished ,return
                 return OK;
 
              /*sql do not finish,go on prase */
-            // handle * _h = new handle;
-            // currentHandle->next = _h;
-            // currentHandle = _h;
+             handle * _h = new handle;
+             currentHandle->next = _h;
+             currentHandle = _h;
         }
     }
 };

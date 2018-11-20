@@ -7,13 +7,17 @@
 		{  "OPT":true,
 			"C":[
 			{"K":"_S_:BIT","F":"bitType"},
-			{"OPT":true,"K":"_B_","F":"bitTypeSize"}
+			{"OPT":true,"C":[
+				{"K":"_C_:("},
+				{"K":"_NUM_:","F":"bitTypeSize"},
+				{"K":"_C_:)"}
+			]}
 		]},
 		{"OPT":true,
 			"C":[
 			{"K":"_S_:TINYINT","F":"tinyIntType"},
 			{"OPT":true,"K":"_B_"},
-			{"OPT":true,"K":"_S_:UNSIGNED","F":tinyIntTypeIsUnsigned},
+			{"OPT":true,"K":"_S_:UNSIGNED","F":"numertypeIsUnsigned"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
 		{"OPT":true,"K":"_S_:BOOLEAN","F":"BoolType"},
@@ -23,7 +27,7 @@
 			"C":[
 			{"K":"_S_:SMALLINT","F":"smallIntType"},
 			{"OPT":true,"K":"_B_"},
-			{"OPT":true,"K":"_S_:UNSIGNED","F":"smallIntTypeIsUnsigned"},
+			{"OPT":true,"K":"_S_:UNSIGNED","F":"numertypeIsUnsigned"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
 		{
@@ -31,7 +35,7 @@
 			"C":[
 			{"K":"_S_:MEDIUMINT","F":"mediumIntType"},
 			{"OPT":true,"K":"_B_"},
-			{"OPT":true,"K":"_S_:UNSIGNED","F":"mediumIntTypeIsUnsigned"},
+			{"OPT":true,"K":"_S_:UNSIGNED","F":"numertypeIsUnsigned"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
 		{
@@ -39,7 +43,7 @@
 			"C":[
 			{"K":"_S_:INTEGER","F":"intType"},
 			{"OPT":true,"K":"_B_"},
-			{"OPT":true,"K":"_S_:UNSIGNED","F":"intTypeIsUnsigned"},
+			{"OPT":true,"K":"_S_:UNSIGNED","F":"numertypeIsUnsigned"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
 		{
@@ -47,7 +51,7 @@
 			"C":[
 			{"K":"_S_:INT","F":"intType"},
 			{"OPT":true,"K":"_B_"},
-			{"OPT":true,"K":"_S_:UNSIGNED","F":"intTypeIsUnsigned"},
+			{"OPT":true,"K":"_S_:UNSIGNED","F":"numertypeIsUnsigned"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
 		{
@@ -55,54 +59,94 @@
 			"C":[
 			{"K":"_S_:BIGINT","F":"bigIntType"},
 			{"OPT":true,"K":"_B_"},
-			{"OPT":true,"K":"_S_:UNSIGNED","F":"bigIntTypeIsUnsigned"},
+			{"OPT":true,"K":"_S_:UNSIGNED","F":"numertypeIsUnsigned"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
 		{
 			"OPT":true,
 			"C":[
 			{"K":"_S_:DECIMAL","F":"decimalType"},
-			{"OPT":true,"K":"_B_","F":"decimalTypeSize"},
-			{"OPT":true,"K":"_S_:UNSIGNED","F":"decimalTypeIsUnsigned"},
+			{"OPT":true,"C":[
+				{"K":"_C_:("},
+				{"K":"_NUM_","F":"floatSize"},
+				{"OPT":true,"C":[
+					{"K":"_C_:,"},
+					{"K":"_NUM_","F":"floatDigitsSize"}
+				]},
+				{"K":"_C_:)"}
+			]},
+			{"OPT":true,"K":"_S_:UNSIGNED","F":"numertypeIsUnsigned"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
 		{
 			"OPT":true,
 			"C":[
 			{"K":"_S_:FLOAT","F":"floatType"},
-			{"OPT":true,"K":"_B_",,"F":"floatTypeSize"},
-			{"OPT":true,"K":"_S_:UNSIGNED","F":"floatTypeIsUnsigned"},
+			{"OPT":true,"C":[
+				{"K":"_C_:("},
+				{"K":"_NUM_","F":"floatSize"},
+				{"OPT":true,"C":[
+					{"K":"_C_:,"},
+					{"K":"_NUM_","F":"floatDigitsSize"}
+				]},
+				{"K":"_C_:)"}
+			]},
+			{"OPT":true,"K":"_S_:UNSIGNED","F":"numertypeIsUnsigned"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
 		{
 			"OPT":true,
 			"C":[
 			{"K":"_S_:DOUBLE","F":"doubleType"},
-			{"OPT":true,"K":"_B_","F":"doubleTypeSize"},
-			{"OPT":true,"K":"_S_:UNSIGNED","F","doubleTypeIsUnsigned"},
+			{"OPT":true,"C":[
+				{"K":"_C_:("},
+				{"K":"_NUM_","F":"floatSize"},
+				{"OPT":true,"C":[
+					{"K":"_C_:,"},
+					{"K":"_NUM_","F":"floatDigitsSize"}
+				]},
+				{"K":"_C_:)"}
+			]},
+			{"OPT":true,"K":"_S_:UNSIGNED","F","numertypeIsUnsigned"},
 			{"OPT":true,"K":"_S_:ZEROFILL"}
 		]},
 		{
 			"OPT":true,
 			"C":[
 			{"K":"_S_:DATETIME","F":"datetimeType"},
-			{"OPT":true,"K":"_B_","F":"datetimeTypePrec"}
+			{"OPT":true,"C":[
+				{"K":"_C_:("},
+				{"K":"_NUM_:","F":"datetimeTypePrec"},
+				{"K":"_C_:)"}
+			]}
 		]},
 		{"OPT":true,"K":"_S_:DATE","F":"dateType"},
 		{"OPT":true,
 			"C":[
 			{"K":"_S_:TIMESTAMP","F":"timestampType"},
-			{"OPT":true,"K":"_B_","F":"timestampTypePrec"}
+			{"OPT":true,"C":[
+				{"K":"_C_:("},
+				{"K":"_NUM_:","F":"timestampTypePrec"},
+				{"K":"_C_:)"}
+			]}
 		]},
 		{"OPT":true,
 			"C":[
 			{"K":"_S_:TIME","F":"timeType"},
-			{"OPT":true,"K":"_B_","F":"timeTypePrec"}
+			{"OPT":true,"C":[
+				{"K":"_C_:("},
+				{"K":"_NUM_:","F":"timeTypePrec"},
+				{"K":"_C_:)"}
+			]}
 		]},
 		{"OPT":true,
 			"C":[
 			{"K":"_S_:YEAR","F":"yearType"},
-			{"OPT":true,"K":"_B_","F":"yearTypePrec"}
+			{"OPT":true,"C":[
+				{"K":"_C_:("},
+				{"K":"_NUM_:","F":"yearTypePrec"},
+				{"K":"_C_:)"}
+			]}
 		]},
 		{"OPT":true,
 			"C":[
@@ -111,7 +155,11 @@
 					{"K":"_S_:CHAR","F":"charType"},
 					{"K":"_S_:VARCHAR","F":"varcharType"}
 				]},
-				{"OPT":true,"K":"_B_","F":"stringTypeSize"},
+				{"OPT":true,"C":[
+					{"K":"_C_:("},
+					{"K":"_NUM_:","F":"stringTypeSize"},
+					{"K":"_C_:)"}
+				]}
 				{"OPT":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
 					{"K":"_AS_","F":"stringTypeCharSet"}
@@ -124,12 +172,20 @@
 		{"OPT":true,
 			"C":[
 			{"K":"_S_:BINARY","F":"binaryType"},
-			{"OPT":true,"K":"_B_","F":"stringTypeSize"}
+			{"OPT":true,"C":[
+				{"K":"_C_:("},
+				{"K":"_NUM_:","F":"stringTypeSize"},
+				{"K":"_C_:)"}
+			]}
 		]},
 		{"OPT":true,
 			"C":[
 			{"K":"_S_:VARBINARY","F":"varbinaryType"},
-			{"OPT":true,"K":"_B_","F":"stringTypeSize"}
+			{"OPT":true,"C":[
+				{"K":"_C_:("},
+				{"K":"_NUM_:","F":"stringTypeSize"},
+				{"K":"_C_:)"}
+			]}
 		]},
 		{"OPT":true,"K":"_S_:TINYBLOB","F":"tinyBlobType"},
 		{"OPT":true,"K":"_S_:BLOB","F":"blobType"},
@@ -137,7 +193,7 @@
 		{"OPT":true,"K":"_S_:LONGBLOB","F":"longBlobtype"},
 		{"OPT":true,
 			"C":[
-				{"K":"_S_:TINYTEXT","F":"tinyBlobType"},
+				{"K":"_S_:TINYTEXT","F":"tinyTextType"},
 				{"OPT":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
 					{"K":"_AS_","F":"stringTypeCharSet"}
@@ -149,7 +205,7 @@
 		]},
 		{"OPT":true,
 			"C":[
-				{"K":"_S_:MEDIUMTEXT","F":"mediumBlobType"},
+				{"K":"_S_:MEDIUMTEXT","F":"mediumTextType"},
 				{"OPT":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
 					{"K":"_AS_","F":"stringTypeCharSet"}
@@ -161,7 +217,7 @@
 		]},
 		{"OPT":true,
 			"C":[
-				{"K":"_S_:TEXT","F":"blobType"},
+				{"K":"_S_:TEXT","F":"textType"},
 				{"OPT":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
 					{"K":"_AS_","F":"stringTypeCharSet"}
@@ -173,7 +229,7 @@
 		]},
 		{"OPT":true,
 			"C":[
-				{"K":"_S_:LONGTEXT","F":"longBlobtype"},
+				{"K":"_S_:LONGTEXT","F":"longTexttype"},
 				{"OPT":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
 					{"K":"_AS_","F":"stringTypeCharSet"}
@@ -186,7 +242,12 @@
 		{"OPT":true,
 			"C":[
 				{"K":"_S_:ENUM","F":"enumType"},
-				{"K":"_B_","F":"enumOrSetValueList"},
+				{"K":"_C_:("},
+				{"LOOP":true,"C":[
+					{"K":"_A_","F":"enumOrSetValueList"},
+					{"OPT":true,"K":"_C_:,"}
+				]},
+				{"K":"_C_:)"},
 				{"OPT":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
 					{"K":"_AS_","F":"stringTypeCharSet"}
@@ -199,7 +260,12 @@
 		{"OPT":true,
 			"C":[
 				{"K":"_S_:SET","F":"setType"},
-				{"K":"_B_",,"F":"enumOrSetValueList"},
+				{"K":"_C_:("},
+				{"LOOP":true,"C":[
+					{"K":"_A_","F":"enumOrSetValueList"},
+					{"OPT":true,"K":"_C_:,"}
+				]},
+				{"K":"_C_:)"},
 				{"OPT":true,"C":[
 					{"K":"_S_:CHARACTER SET"},
 					{"K":"_AS_","F":"stringTypeCharSet"}
@@ -283,8 +349,7 @@
       	]},
 		{"INCLUDE":20000},
 		{"OPT":true,"K":"_S_:AUTO_INCREMENT"},
-		{
-			"OPT":true,
+		{"OPT":true,
 			"C":[
 				{"K":"_S_:UNIQUE","F":"columnIsUK"},
 				{"OPT":true,"K":"_S_:KEY"}
@@ -407,7 +472,7 @@
 				"OPT":true,
 				"C":[
 					{"K":"_S_:CONSTRAINT"},
-					{"OPT":true,"K":"_AS_"}
+					{"OPT":true,"K":"_AS_","F":"constraintName"}
 				]
 			},
 			{
@@ -415,19 +480,29 @@
 				"C":[
 				{
 					"C":[
-						{"K":"_S_:PRIMARY KEY"},
+						{"K":"_S_:PRIMARY KEY","F":"primaryKeys"},
 						{"OPT":true,
 							"C":[
 								{"K":"_S_:USING"},
 								{"K":"_AS_"}
 						]},
-						{"K":"_B_","F":"primaryKeys"},
+						{"K":"_C_:("},
+						{"LOOP":true,"C":[
+							{"K":"_N_","keyColumn"},
+							{"OPT":true,"K":"_B_"},
+							{"OPT":true,"K":"_B_"},
+							{"OPT":true,"OR":true,"C":[
+								{"K":"_S_:ASC"},
+								{"K":"_S_:DESC"}
+							]}
+						]},
+						{"K":"_C_:)"},
 						{"INCLUDE":1001}
 					]
 				},
 				{
 					"C":[
-					{"K":"_S_:UNIQUE"},
+					{"K":"_S_:UNIQUE","F":"uniqueKeys"},
 					{
 						"OR":true,
 						"C":[
@@ -435,13 +510,23 @@
 							{"K":"_S_:INDEX"}	
 						]
 					},
-					{"OPT":true,"K":"_N_"},
+					{"OPT":true,"K":"_N_","F":"uniqueKeyName"},
 					{"OPT":true,
 						"C":[
 							{"K":"_S_:USING"},
 							{"K":"_AS_"}
 					]},
-					{"K":"_B_","F":"uniqueKeys"},
+					{"K":"_C_:("},
+						{"LOOP":true,"C":[
+							{"K":"_N_","keyColumn"},
+							{"OPT":true,"K":"_B_"},
+							{"OPT":true,"K":"_B_"},
+							{"OPT":true,"OR":true,"C":[
+								{"K":"_S_:ASC"},
+								{"K":"_S_:DESC"}
+							]}
+						]},
+						{"K":"_C_:)"},
 					{"INCLUDE":1001}
 				]}				
 		]
@@ -748,7 +833,7 @@
 					{"K":"_C_:."},
 					{"K":"_N_","NewTableName"}
 				]},
-				{"K":"_N_","COMMENT":"create table tableName","F":"NewTableOnlyTableName"}
+				{"K":"_N_","COMMENT":"create table tableName","F":"NewTableName"}
 			]}
 		]},
 		{
@@ -756,7 +841,7 @@
 			"C":[
 			{
 				"C":[
-				{"K":"_S_:LIKE"},
+				{"K":"_S_:LIKE","F":"createTableLike"},
 				{
 					"OR":true,
 					"C":[
@@ -766,7 +851,7 @@
 							{"K":"_C_:."},
 							{"K":"_N_","F":"NewTableLikedTableName"}
 					]},
-					{"K":"_N_","F":"NewTableLikedOnlyTableName"}
+					{"K":"_N_","F":"NewTableLikedTableName"}
 				]}
 			]},
 			{
@@ -891,7 +976,7 @@
 			{"K":"_S_:FIRST","F":"alterChangeColumnAtFirst"},
 			{"C":[
 				{"K":"_S_:AFTER"},
-				{"K":"_N_",,"F":"alterChangeColumnAfter"}
+				{"K":"_N_","F":"alterChangeColumnAfter"}
 			]}
 		]}
 	]
@@ -1070,7 +1155,7 @@
 				{"K":"_C_:."},
 				{"K":"_N_","F":"dropIndexOnTableName"}
 			]},
-			{"K":"_N_","COMMENT":"tableName",,"F":"dropIndexOnOnlyTableName"}				
+			{"K":"_N_","COMMENT":"tableName","F":"dropIndexOnOnlyTableName"}				
 		]},
 		{"OR":true,"OPT":true,"C":[
 			{"C":[
