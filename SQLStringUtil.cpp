@@ -30,6 +30,7 @@ void initKeyWords()
     KeyChar['>']=true;
     KeyChar['<']=true;
     KeyChar[';']=true;
+    KeyChar[',']=true;
 
     for(int i=0;i<256;i++)
     {

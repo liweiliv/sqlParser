@@ -28,7 +28,7 @@ namespace sqlParser{
  {
      newColumnInfo *c = getLastColumn(h);
      c->type = MYSQL_TYPE_TINY;
-     c->m_signed = true;
+     c->isSigned = true;
      return OK;
  }
   extern "C" parseValue BoolType(handle * h, const string& sql)
@@ -40,7 +40,7 @@ namespace sqlParser{
   extern "C" parseValue numertypeIsUnsigned(handle * h, const string& sql)
  {
      newColumnInfo *c = getLastColumn(h);
-     c->m_signed = false;
+     c->isSigned = false;
      return OK;
  }
   extern "C" parseValue smallIntType(handle * h, const string& sql)
@@ -298,14 +298,14 @@ namespace sqlParser{
   extern "C" parseValue generatedColumn(handle * h, const string& sql)
   {
       newColumnInfo *c = getLastColumn(h);
-      c->m_generated = true;
+      c->generated = true;
       return OK;
   }
   extern "C" parseValue columnIsUK(handle * h, const string& sql)
   {
       newTableInfo * t = getLastTable(h);
       newColumnInfo *c = getLastColumn(h);
-      c->m_isUnique = true;
+      c->isUnique = true;
       newKeyInfo *k = new newKeyInfo();
       k->type = newKeyInfo::UNIQUE_KEY;
       k->name = c->name;
@@ -317,7 +317,7 @@ namespace sqlParser{
   {
       newTableInfo * t = getLastTable(h);
       newColumnInfo *c = getLastColumn(h);
-      c->m_isPrimary = true;
+      c->isPrimary = true;
       newKeyInfo *k = new newKeyInfo();
       k->type = newKeyInfo::PRIMARY_KEY;
       k->columns.push_back(c->name);
@@ -377,7 +377,7 @@ namespace sqlParser{
   {
       newTableInfo * t = getLastTable(h);
       newKeyInfo *k = *(t->newKeys.rbegin());
-      if(!k->name.empty())
+      if(k->name.empty())
               k->name = sql;
       return OK;
   }
@@ -615,6 +615,34 @@ namespace sqlParser{
    {
        newTableInfo * t = getLastTable(h);
        t->table.table =sql;
+       return OK;
+   }
+  extern "C" parseValue  useDatabase(handle * h, const string& sql)
+   {
+       h->dbName = sql;
+       return OK;
+   }
+  extern "C" parseValue  alterDatabase(handle * h, const string& sql)
+   {
+       h->meta.database = sql;
+       h->meta.database.type = databaseInfo::ALTER_DATABASE;
+       return OK;
+   }
+  extern "C" parseValue  createDatabase(handle * h, const string& sql)
+   {
+       h->meta.database = sql;
+       h->meta.database.type = databaseInfo::CREATE_DATABASE;
+       return OK;
+   }
+  extern "C" parseValue  dropDatabase(handle * h, const string& sql)
+   {
+       h->meta.database = sql;
+       h->meta.database.type = databaseInfo::DROP_DATABASE;
+       return OK;
+   }
+  extern "C" parseValue  databaseCharset(handle * h, const string& sql)
+   {
+       h->meta.database.charset = sql;
        return OK;
    }
 

@@ -39,6 +39,12 @@ static bool jumpOverComment(const char *& str)
     return true;
 }
 const char * endOfWord(const char * str);
+static const char * realEndOfWord(const char * str)
+{
+    while (!isSpaceOrComment(str) && *str != '\0')
+        str++;
+    return str;
+}
 static const char * nextWord(const char * str)
 {
     while (isSpaceOrComment(str))

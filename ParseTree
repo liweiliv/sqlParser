@@ -494,7 +494,8 @@
 							{"OPT":true,"OR":true,"C":[
 								{"K":"_S_:ASC"},
 								{"K":"_S_:DESC"}
-							]}
+							]},
+							{"OPT":true,"K":"_C_:,"}
 						]},
 						{"K":"_C_:)"},
 						{"INCLUDE":1001}
@@ -524,7 +525,8 @@
 							{"OPT":true,"OR":true,"C":[
 								{"K":"_S_:ASC"},
 								{"K":"_S_:DESC"}
-							]}
+							]},
+							{"OPT":true,"K":"_C_:,"}
 						]},
 						{"K":"_C_:)"},
 					{"INCLUDE":1001}
@@ -1239,5 +1241,89 @@
 			]},
 			{"OPT":true,"K":"_C_:,"}
 		]}
+	]
+}
+{
+	"ID":20000,
+	"name":"create database",
+	"HEAD":true,
+	"C":[
+		{"K":"_S_:CREATE"},
+		{"OR":true,"C":[
+			{"K":"_S_:DATABASE"},
+			{"K":"_S_:SCHEMA"}
+		]},
+		{"OPT":true,"K":"_S_:IF NOT EXISTS"},
+		{"K":"_N_","F":"createDatabase"},
+		{"OPT":true,"C":[
+			{"OPT":true,"K":"_S_:DEFAULT"},
+			{"K":"_S_:CHARACTER"},
+			{"K":"_S_:SET"},
+			{"OPT":true,"K":"_C_:="},
+			{"K":"_AS_","F":"databaseCharset"}
+		]},
+		{"OPT":true,"C":[
+			{"OPT":true,"K":"_S_:DEFAULT"},
+			{"K":"_S_:COLLATE"},
+			{"OPT":true,"K":"_C_:="},
+			{"K":"_AS_"}
+		]}		
+	]
+}
+{
+	"ID":21000,
+	"name":"drop database",
+	"HEAD":true,
+	"C":[
+		{"K":"_S_:DROP"},
+		{"OR":true,"C":[
+			{"K":"_S_:DATABASE"},
+			{"K":"_S_:SCHEMA"}
+		]},
+		{"OPT":true,"K":"_S_:IF EXISTS"},
+		{"K":"_N_","F":"dropDatabase"}	
+	]
+}
+{
+	"ID":22000,
+	"name":"alter database",
+	"HEAD":true,
+	"C":[
+		{"K":"_S_:ALTER"},
+		{"OR":true,"C":[
+			{"K":"_S_:DATABASE"},
+			{"K":"_S_:SCHEMA"}
+		]},
+		{"K":"_N_","F":"alterDatabase"},
+		{"OPT":true,"C":[
+			{"C":[
+					{"K":"_S_:UPGRADE DATA DIRECTORY"},
+					{"K":"_AS_"}
+			]},
+			{"C":[
+				{"OPT":true,"C":[
+					{"OPT":true,"K":"_S_:DEFAULT"},
+					{"K":"_S_:CHARACTER"},
+					{"K":"_S_:SET"},
+					{"OPT":true,"K":"_C_:="},
+					{"K":"_AS_","F":"databaseCharset"}
+				]},
+				{"OPT":true,"C":[
+					{"OPT":true,"K":"_S_:DEFAULT"},
+					{"K":"_S_:COLLATE"},
+					{"OPT":true,"K":"_C_:="},
+					{"K":"_AS_"}
+				]}	
+			]}
+		]}	
+	]
+}
+{
+	"ID":23000,
+	"name":"use database",
+	"HEAD":true,
+	"C":[
+		{"K":"_S_:USE"},
+		{"K":"_N_","F":"useDatabase"}	
 	]
 }
