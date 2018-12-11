@@ -611,7 +611,6 @@
 					{"OR":true,"C":[
 						{"K":"_S_:CHARACTER SET"},
 						{"K":"_S_:CHARSET"},
-						{"K":"_S_:COLLATE"}			
 					]},
 					{"OPT":true,"K":"_C_:="},
 					{"K":"_AS_","F":"tableCharset"}

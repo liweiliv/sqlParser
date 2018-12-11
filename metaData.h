@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <list>
 #include <assert.h>
+#include "mysqlTypes.h"
 struct stringArray
 {
     char ** m_array;
@@ -72,6 +73,7 @@ struct columnMeta
     std::string m_columnName;
     std::string m_charset;
     uint32_t m_size;
+    uint32_t m_byteSize;
     uint32_t m_precision;
     uint32_t m_decimals;
     stringArray m_setAndEnumValueList;
@@ -79,7 +81,7 @@ struct columnMeta
     bool m_isPrimary;
     bool m_isUnique;
     bool m_generated;
-    columnMeta():m_columnType(0),m_columnIndex(0),m_size(0),m_precision(0),m_decimals(0),
+    columnMeta():m_columnType(0),m_columnIndex(0),m_size(0),m_byteSize(0),m_precision(0),m_decimals(0),
             m_setAndEnumValueList(NULL),m_signed(false),m_isPrimary(false),m_isUnique(false),m_generated(false)
     {}
     columnMeta &operator =(const columnMeta &c)
@@ -89,6 +91,7 @@ struct columnMeta
         m_columnName = c.m_columnName;
         m_charset = c.m_charset;
         m_size = c.m_size;
+        m_byteSize = c.m_byteSize;
         m_precision = c.m_precision;
         m_decimals =c.m_decimals;
         m_setAndEnumValueList = c.m_setAndEnumValueList;
@@ -97,6 +100,186 @@ struct columnMeta
         m_isUnique = c.m_isUnique;
         m_generated = c.m_generated;
         return *this;
+    }
+    std::string toString()
+    {
+        std::string sql("`");
+        sql.append(m_columnName).append("` ");
+        char numBuf[40] = {0};
+        switch(m_columnType)
+        {
+        case MYSQL_TYPE_DECIMAL:
+            sql.append("DECIMAL").append("(");
+            sprintf(numBuf,"%u",m_size);
+            sql.append(numBuf).append(",");
+            sprintf(numBuf,"%u",m_decimals);
+            sql.append(numBuf).append(")");
+            break;
+        case MYSQL_TYPE_DOUBLE:
+            sql.append("DOUBLE").append("(");
+            sprintf(numBuf,"%u",m_size);
+            sql.append(numBuf).append(",");
+            sprintf(numBuf,"%u",m_decimals);
+            sql.append(numBuf).append(")");
+            break;
+        case MYSQL_TYPE_FLOAT:
+            sql.append("FLOAT").append("(");
+            sprintf(numBuf,"%u",m_size);
+            sql.append(numBuf).append(",");
+            sprintf(numBuf,"%u",m_decimals);
+            sql.append(numBuf).append(")");
+            break;
+        case MYSQL_TYPE_BIT:
+            sql.append("BIT").append("(");
+            sprintf(numBuf,"%u",m_size);
+            sql.append(numBuf).append(")");
+            break;
+        case MYSQL_TYPE_TINY:
+            sql.append("TINY");
+            if(!m_signed)
+                sql.append(" UNSIGNED");
+            break;
+        case MYSQL_TYPE_SHORT:
+            sql.append("SMALLINT");
+            if(!m_signed)
+                sql.append(" UNSIGNED");
+            break;
+        case MYSQL_TYPE_INT24:
+            sql.append("MEDIUMINT");
+            if(!m_signed)
+                sql.append(" UNSIGNED");
+            break;
+        case MYSQL_TYPE_LONG:
+            sql.append("INTEGER");
+            if(!m_signed)
+                sql.append(" UNSIGNED");
+            break;
+        case MYSQL_TYPE_LONGLONG:
+            sql.append("BIGINT");
+            if(!m_signed)
+                sql.append(" UNSIGNED");
+            break;
+        case MYSQL_TYPE_DATETIME:
+        case MYSQL_TYPE_DATETIME2:
+            sql.append("DATETIME");
+            if(m_precision>0)
+            {
+                sprintf(numBuf,"%u",m_precision);
+                sql.append("(").append(numBuf).append(")");
+            }
+            break;
+        case MYSQL_TYPE_TIMESTAMP:
+        case MYSQL_TYPE_TIMESTAMP2:
+            sql.append("TIMESTAMP");
+            if(m_precision>0)
+            {
+                sprintf(numBuf,"%u",m_precision);
+                sql.append("(").append(numBuf).append(")");
+            }
+            break;
+        case MYSQL_TYPE_DATE:
+            sql.append("DATE");
+            break;
+        case MYSQL_TYPE_TIME:
+        case MYSQL_TYPE_TIME2:
+            sql.append("TIME");
+            if(m_precision>0)
+            {
+                sprintf(numBuf,"%u",m_precision);
+                sql.append("(").append(numBuf).append(")");
+            }
+            break;
+        case MYSQL_TYPE_YEAR:
+            sql.append("YEAR");
+            if(m_precision>0)
+            {
+                sprintf(numBuf,"%u",m_precision);
+                sql.append("(").append(numBuf).append(")");
+            }
+            break;
+        case MYSQL_TYPE_STRING:
+            sprintf(numBuf,"%u",m_size);
+            if(m_charset.empty())
+            {
+                sql.append("BINARY").append("(").append(numBuf).append(")");
+            }
+            else
+            {
+                sql.append("CHAR").append("(").append(numBuf).append(") CHARACTER SET ").append(m_charset);
+            }
+            break;
+        case MYSQL_TYPE_VARCHAR:
+            sql.append("VARCHAR").append("(").append(numBuf).append(") CHARACTER SET ").append(m_charset);
+            break;
+        case MYSQL_TYPE_VAR_STRING:
+            sprintf(numBuf,"%u",m_size);
+            if(m_charset.empty())
+            {
+                sql.append("VARBINARY").append("(").append(numBuf).append(")");
+            }
+            else
+            {
+                sql.append("VARCHAR").append("(").append(numBuf).append(") CHARACTER SET").append(m_charset);
+            }
+            break;
+        case MYSQL_TYPE_TINY_BLOB:
+            if(m_charset.empty())
+                sql.append("TINYTEXT").append(" CHARACTER SET ").append(m_charset);
+            else
+                sql.append("TINYBLOB");
+            break;
+        case MYSQL_TYPE_MEDIUM_BLOB:
+            if(m_charset.empty())
+                sql.append("MEDIUMTEXT").append(" CHARACTER SET ").append(m_charset);
+            else
+                sql.append("MEDIUMBLOB");
+            break;
+        case MYSQL_TYPE_BLOB:
+            if(m_charset.empty())
+                sql.append("TEXT").append(" CHARACTER SET ").append(m_charset);
+            else
+                sql.append("BLOB");
+            break;
+        case MYSQL_TYPE_LONG_BLOB:
+            if(m_charset.empty())
+                sql.append("LONGTEXT").append(" CHARACTER SET ").append(m_charset);
+            else
+                sql.append("LONGBLOB");
+            break;
+        case MYSQL_TYPE_ENUM:
+        {
+            sql.append("ENUM (");
+            for(int idx =0 ;idx<m_setAndEnumValueList.m_Count;idx++)
+            {
+                if(idx>0)
+                    sql.append(",");
+                sql.append("'").append(m_setAndEnumValueList.m_array[idx]).append("'");
+            }
+            sql.append(")").append(" CHARACTER SET ").append(m_charset);
+            break;
+        }
+        case MYSQL_TYPE_SET:
+        {
+            sql.append("SET (");
+            for(int idx =0 ;idx<m_setAndEnumValueList.m_Count;idx++)
+            {
+                if(idx>0)
+                    sql.append(",");
+                sql.append("'").append(m_setAndEnumValueList.m_array[idx]).append("'");
+            }
+            sql.append(")").append(" CHARACTER SET ").append(m_charset);
+            break;
+        }
+        case MYSQL_TYPE_GEOMETRY:
+            sql.append("GEOMETRY");
+            break;
+        case MYSQL_TYPE_JSON:
+            sql.append("JSON");
+            break;
+        default:
+            abort();
+        }
+        return sql;
     }
 };
 struct indexMeta
@@ -263,6 +446,7 @@ struct tableMeta
         }
         return -1;
 DROP:
+        /*copy data*/
         indexMeta * newIndex = new indexMeta[m_uniqueKeysCount-1];
         for(int i=0;i<idx;i++)
         {
@@ -274,25 +458,92 @@ DROP:
             newIndex[i-1].name = m_uniqueKeys[i].name;
             newIndex[i-1].columns = m_uniqueKeys[i].columns;
         }
-        for(int i = 0;i<m_uniqueKeys[idx].columns.m_Count;i++)
-        {
-            for(int j =0;j<m_uniqueKeysCount-1;j++)
-            {
-                for(int k = 0;k<newIndex[j].columns.m_Count;k++)
-                {
-
-                }
-            }
-        }
+        indexMeta * oldUK = m_uniqueKeys;
         m_uniqueKeys = newIndex;
         m_uniqueKeysCount--;
+
+        /*update columns */
+        for(int i = 0;i<oldUK[idx].columns.m_Count;i++)
+        {
+            for(int j =0;j<m_uniqueKeysCount;j++)
+            {
+                for(int k = 0;k<m_uniqueKeys[j].columns.m_Count;k++)
+                {
+                    if(strcmp(m_uniqueKeys[j].columns.m_array[k],oldUK[idx].columns.m_array[i])==0)
+                        goto COLUMN_IS_STILL_UK;
+                }
+            }
+            getColumn(oldUK[idx].columns.m_array[i])->m_isUnique = false;
+COLUMN_IS_STILL_UK:
+        continue;
+        }
         return 0;
     }
     int addUniqueKey(const char *ukName,const std::list<std::string> &columns)
     {
-
+        if(getUniqueKey(ukName)!=NULL)
+            return -1;
+        /*copy data*/
+        indexMeta * newIndex = new indexMeta[m_uniqueKeysCount+1];
+        for(int i=0;i<m_uniqueKeysCount;i++)
+        {
+            newIndex[i].name = m_uniqueKeys[i].name;
+            newIndex[i].columns = m_uniqueKeys[i].columns;
+        }
+        newIndex[m_uniqueKeysCount].columns = columns;
+        newIndex[m_uniqueKeysCount].name = ukName;
+        for(int i = 0;i<newIndex[m_uniqueKeysCount].columns.m_Count;i++)
+        {
+            columnMeta * column = getColumn(newIndex[m_uniqueKeysCount].columns.m_array[i]);
+            if(column == NULL)
+            {
+                delete []newIndex;
+            }
+            column->m_isUnique = true;
+        }
+        m_uniqueKeys = newIndex;
+        m_uniqueKeysCount++;
+        return 0;
     }
-
-
+    std::string toString()
+    {
+        std::string sql("CREATE TABLE `");
+        sql.append(m_tableName).append("` (");
+        for(uint32_t idx =0;idx<m_columnsCount;idx++)
+        {
+            if(idx!=0)
+                sql.append(",\n");
+            sql.append(m_columns[idx].toString());
+        }
+        if(m_primaryKey.m_Count>0)
+        {
+            sql.append(",\n");
+            sql.append("PRIMARY KEY (");
+            for(int idx =0 ;idx<m_primaryKey.m_Count;idx++)
+            {
+                if(idx>0)
+                    sql.append(",");
+                sql.append("`").append(m_primaryKey.m_array[idx]).append("`");
+            }
+            sql.append(")");
+        }
+        if(m_uniqueKeysCount>0)
+        {
+            for(int idx = 0;idx<m_uniqueKeysCount;idx++)
+            {
+                sql.append(",\n");
+                sql.append("UNIQUE KEY `").append(m_uniqueKeys[idx].name).append("` (");
+                for(int j =0 ;j<m_uniqueKeys[idx].columns.m_Count;j++)
+                {
+                    if(j>0)
+                        sql.append(",");
+                    sql.append("`").append(m_uniqueKeys[idx].columns.m_array[j]).append("`");
+                }
+                sql.append(")");
+            }
+        }
+        sql.append(".\n) ").append("CHARACTER SET").append(m_charset).append(";");
+        return sql;
+    }
 };
 #endif /* _METADATA_H_ */
