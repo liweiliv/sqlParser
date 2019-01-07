@@ -18,9 +18,9 @@
 #include <set>
 #include <list>
 #include "stackLog.h"
-#include "json.h"
 #include "SQLStringUtil.h"
 #include "sqlParser.h"
+#include "util/json.h"
 using namespace std;
 namespace sqlParser
 {
@@ -587,9 +587,7 @@ bool fileExist(const char * file)
 int sqlParser::LoadFuncs(const char * fileName)
 {
     if (!fileExist(fileName))
-    {
         return -1;
-    }
     string soName;
     string compileCmd;
     const char * end = fileName + strlen(fileName);
@@ -604,11 +602,13 @@ int sqlParser::LoadFuncs(const char * fileName)
         remove(soName.c_str());
     else
         goto LOAD;
-    COMPILE: compileCmd.assign("g++ -shared -g -fPIC -Wall -o ");
+COMPILE:
+    compileCmd.assign("g++ -shared -g -fPIC -Wall -o ");
     compileCmd.append(soName).append(" ").append(fileName);
     if (system(compileCmd.c_str()) != 0)
         return -2;
-    LOAD: if (m_funcsHandel != NULL)
+LOAD:
+    if (m_funcsHandel != NULL)
         dlclose(m_funcsHandel);
     m_funcsHandel = dlopen(string("./").append(soName).c_str(), RTLD_NOW);
     if (m_funcsHandel == NULL)

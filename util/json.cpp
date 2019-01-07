@@ -4,9 +4,10 @@
  *  Created on: 2018年10月30日
  *      Author: liwei
  */
+#include "json.h"
+
 #include <string.h>
 #include <stdio.h>
-#include "json.h"
 jsonValue::type jsonValue::getType(const char * data)
 {
     if (data == NULL)
@@ -150,7 +151,6 @@ int jsonNum::parse(const char * data)
     }
     if (*ptr > '9' || *ptr < '0')
         return -1;
-    m_value = ptr[0] - '0';
     while (*ptr <= '9' && *ptr >= '0')
     {
         m_value *= 10;

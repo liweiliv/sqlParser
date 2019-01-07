@@ -1243,7 +1243,7 @@
 	]
 }
 {
-	"ID":20000,
+	"ID":30000,
 	"name":"create database",
 	"HEAD":true,
 	"C":[
@@ -1270,7 +1270,7 @@
 	]
 }
 {
-	"ID":21000,
+	"ID":31000,
 	"name":"drop database",
 	"HEAD":true,
 	"C":[
@@ -1284,7 +1284,7 @@
 	]
 }
 {
-	"ID":22000,
+	"ID":32000,
 	"name":"alter database",
 	"HEAD":true,
 	"C":[

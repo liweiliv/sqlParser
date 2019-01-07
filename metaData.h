@@ -293,11 +293,11 @@ struct tableMeta
     std::string  m_charset;
     columnMeta * m_columns;
     uint32_t m_columnsCount;
-
+    uint64_t m_tableID;
     stringArray m_primaryKey;
     indexMeta * m_uniqueKeys;
     uint16_t m_uniqueKeysCount;
-    tableMeta():m_columns(NULL),m_columnsCount(0),m_uniqueKeys(NULL),m_uniqueKeysCount(0)
+    tableMeta():m_columns(NULL),m_columnsCount(0),m_tableID(0),m_uniqueKeys(NULL),m_uniqueKeysCount(0)
     {
     }
     ~tableMeta()
@@ -319,6 +319,7 @@ struct tableMeta
         }
         else
             m_columns = NULL;
+        m_tableID = t.m_tableID;
         m_primaryKey = t.m_primaryKey;
         if((m_uniqueKeysCount=t.m_uniqueKeysCount)>0)
         {
