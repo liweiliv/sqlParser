@@ -10,6 +10,8 @@
 namespace STORE
 {
 #define SubIndexFixedFlag 0x00000001
+#define SubIndexUnionFlag 0x00000001
+
 struct subIndex{
     uint32_t count;
     uint32_t size;
@@ -22,6 +24,7 @@ enum SEARCH_TYPE{
     LESS,
     GREAT
 };
+
 struct subIndexFixed :public subIndex
 {
     uint32_t fixedSize;

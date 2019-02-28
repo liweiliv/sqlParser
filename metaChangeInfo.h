@@ -223,12 +223,12 @@ struct statusInfo
 struct handle
 {
     string dbName;
-    metaChangeInfo meta;
+    void * userData;
     statusInfo * head;
     statusInfo * end;
     handle * next;
-    handle() :
-            head(NULL), end(NULL),next(NULL)
+    handle(void *_userData) :
+        userData(_userData),head(NULL), end(NULL),next(NULL)
     {
     }
     ~handle()

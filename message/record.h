@@ -69,10 +69,12 @@ struct record
         hashCount = 0;
     }
 };
+#define TEST_BITMAP(m,i) (((m)[(i)>>3]>>(i&0x7))&0x1)
+#define SET_BITMAP(m,i)  (m)[(i)>>3]|= (0x01<<(i&0x7))
 struct TableMetaMessage :public record
 {
     /*--------------version 0----------------*/
-    /*[64 bit tableMetaID][8 bit database size][database string+ 1 byte '\0'][8 bit table size][table string+ 1 byte '\0']
+    /*[64 bit tableMetaID][32 bit tableVersion][8 bit database size][database string+ 1 byte '\0'][8 bit table size][table string+ 1 byte '\0']
      * [8 bit charset size][charset string+ 1 byte '\0'][16 bit columnCount][columnDef 1]...[columnDef n]
      * [16 bit primaryKeyColumnCount][16 bit column id 1]...[16 bit column id n]
      * [16 bit uniqueKeyCount][16 bit uk 1 column count]...[16 bit uk n column count]
@@ -81,6 +83,7 @@ struct TableMetaMessage :public record
       * [16 bit uk m column 1 id ]...[16 bit uk m column n id ]
      * */
     uint64_t tableMetaID;
+    uint32_t tableVersion;
     const char * database;
     const char * table;
     const char * charset;
@@ -95,7 +98,8 @@ struct TableMetaMessage :public record
     TableMetaMessage(const char * data):record(data){
         const char * ptr = data;
         tableMetaID = *(uint64_t*)(ptr+head->headSize);
-        database = ptr+head->headSize+sizeof(tableMetaID)+1;
+        tableVersion = *(uint32_t*)(ptr+head->headSize+sizeof(tableMetaID));
+        database = ptr+head->headSize+sizeof(tableMetaID)+sizeof(tableVersion)+1;
         table = database+*(uint8_t*)(database-1);
         charset = table+*(uint8_t*)(table-1);
         columnCount = *(uint16_t*)(charset+*(uint8_t*)(charset-1));
@@ -148,50 +152,62 @@ struct TableMetaMessage :public record
 struct DMLRecord:public record
 {
     /*--------------version 0----------------*/
-    /*[64 bit tableMetaID][16 bit columnCount]
+    /*[64 bit tableMetaID][32 bit tableVersion][16 bit columnCount]
      * [32 byte new column 1 size]...[32 byte new column n size] (if exist new column)
      * [new column 1+ 1byte '\0']...[new column n+ 1byte '\0']
+     * [old column bit bitmap] (if update)
      * [32 byte old column 1 size]...[32 byte old column n size] (if exist old column)
      * [old column 1+ 1byte '\0']...[old column n+ 1byte '\0']
      * */
+    struct DMLRecordHead{
     uint64_t tableMetaID;
-    TableMetaMessage * meta;
+    uint32_t tableVersion;
     uint16_t columnCount;
+    };
+    bool outerMem;
+    DMLRecordHead *dmlHead;
+    TableMetaMessage * meta;
     uint32_t * newColumnSizes;
     const char ** newColumns;
     uint32_t * oldColumnSizes;
     const char ** oldColumns;
+    uint8_t *updatedBitmap;
     /*----------------------------------------------*/
-    DMLRecord(const char * data)  :
-        record(data)
+    DMLRecord(const char * data,void * mem = nullptr)  :
+        record(data),outerMem(mem!=nullptr)
     {
         const char * ptr = data+head->headSize;
-        tableMetaID = *(uint64_t*)ptr;
-        columnCount = *(uint16_t*)(ptr+sizeof(tableMetaID));
+        dmlHead = (DMLRecordHead*)ptr;
         meta = NULL;
-        ptr += sizeof(tableMetaID)+sizeof(columnCount);
+        ptr += sizeof(DMLRecordHead);
         newColumns = oldColumns = NULL;
         newColumnSizes = oldColumnSizes = NULL;
         /*alloc mem one time*/
-        void * mem = malloc(columnCount*sizeof(const char*)*(head->type==UPDATE||head->type==REPLACE)?2:1);
+        if(mem == nullptr)
+            mem = malloc(dmlHead->columnCount*sizeof(const char*)*(head->type==UPDATE||head->type==REPLACE)?2:1);
         if(head->type == INSERT||head->type == UPDATE)
         {
             newColumnSizes = (uint32_t*)ptr;
-            ptr+=sizeof(uint32_t)*columnCount;
+            ptr+=sizeof(uint32_t)*dmlHead->columnCount;
             newColumns = mem;
-            mem += columnCount;
-            for(uint16_t idx = 0;idx<columnCount;idx++)
+            mem += dmlHead->columnCount;
+            for(uint16_t idx = 0;idx<dmlHead->columnCount;idx++)
             {
                 newColumns[idx] = ptr;
                 ptr+= newColumnSizes[idx];
             }
         }
+        if(head->type == UPDATE)
+        {
+            updatedBitmap = (uint8_t*)ptr;
+            ptr+= (dmlHead->columnCount>>3)+(dmlHead->columnCount&0x7f?1:0);
+        }
         if(head->type == DELETE||head->type == UPDATE)
         {
             oldColumnSizes = (uint32_t*)ptr;
-            ptr+=sizeof(uint32_t)*columnCount;
+            ptr+=sizeof(uint32_t)*dmlHead->columnCount;
             oldColumns = mem;
-            for(uint16_t idx = 0;idx<columnCount;idx++)
+            for(uint16_t idx = 0;idx<dmlHead->columnCount;idx++)
             {
                 oldColumns[idx] = ptr;
                 ptr+= oldColumnSizes[idx];
@@ -206,6 +222,8 @@ struct DMLRecord:public record
          */
     }
     ~DMLRecord(){
+        if(outerMem)
+            return ;
         if(newColumns != NULL)
             free(newColumns);
         else if(oldColumns != NULL)//only newColumns is NULL,oldColumns not NULL ,free oldColumns

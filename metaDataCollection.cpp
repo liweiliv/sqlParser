@@ -19,55 +19,52 @@ template<typename T>
 class MetaTimeline
 {
 private:
-    struct checkpoint
-    {
-        uint64_t fileID;
-        uint64_t offset;
-    };
     struct MetaInfo
     {
         T * meta;
-        checkpoint begin;
-        checkpoint end;
+        uint64_t begin;
+        uint64_t end;
         MetaInfo * prev;
     };
     MetaInfo * m_current;
+    uint64_t m_id;
+    uint16_t m_version;
 public:
-    MetaTimeline(T * meta = NULL, uint64_t fileID = 0, uint64_t offset = 0) :
-            m_current(NULL)
+    MetaTimeline(uint64_t id,T * meta = NULL, uint64_t fileID = 0, uint64_t offset = 0) :
+            m_current(NULL),m_id(id),m_version(0)
     {
         if (meta != NULL)
+        {
             put(meta, fileID, offset);
+            meta->id = m_id|m_version;
+        }
     }
     ~MetaTimeline()
     {
-        purge(0xffffffffffffffffUL, 0xffffffffffffffffUL);
+        purge(0xffffffffffffffffUL);
+    }
+    void setID(uint64_t id){
+        m_id  = id;
     }
     /*can be concurrent*/
-    inline T * get(uint64_t fileID, uint64_t offset)
+    inline T * get(uint64_t originCheckPoint)
     {
-        checkpoint c =
-        { fileID, offset };
         MetaInfo * current = m_current, *first;
         __asm__ __volatile__("lfence" ::: "memory");
-        int b = memcmp(&current->begin, &c, sizeof(checkpoint));
-        if (likely(b <= 0))
+        if (likely(current->begin <= originCheckPoint))
         {
-            int e = memcmp(&current->end, &c, sizeof(checkpoint));
-            if (likely(e > 0))
+            if (likely(current->end>originCheckPoint))
                 return current;
             else
             {
                 first = current;
                 __asm__ __volatile__("lfence" ::: "memory");
                 MetaInfo * newer = m_current;
-                int e = memcmp(&newer->end, &c, sizeof(checkpoint));
-                if (e < 0)
+                if (newer->end < originCheckPoint)
                     return NULL;
                 while (newer != current)
                 {
-                    b = memcmp(&newer->begin, &c, sizeof(checkpoint));
-                    if (b < 0)
+                    if (newer->begin < originCheckPoint)
                         return newer->meta;
                     else
                         newer = newer->prev;
@@ -80,8 +77,7 @@ public:
             MetaInfo * m = current->prev;
             while (m != NULL)
             {
-                b = memcmp(&m->begin, &c, sizeof(checkpoint));
-                if (b < 0)
+                if (m->begin < originCheckPoint)
                     return m;
                 else
                     m = m->prev;
@@ -90,14 +86,14 @@ public:
         }
     }
     /*must be serial*/
-    int put(T * meta, uint64_t fileID, uint64_t offset)
+    int put(T * meta, uint64_t originCheckPoint)
     {
         MetaInfo * m = new MetaInfo;
-        m->begin.fileID = fileID;
-        m->begin.offset = offset;
+        m->begin  = originCheckPoint;
         m->end.fileID = 0xffffffffffffffffUL;
         m->end.offset = 0xffffffffffffffffUL;
         m->meta = meta;
+        meta->m_id = m_id|(m_version++);
         if (m_current == NULL)
         {
             __asm__ __volatile__("sfence" ::: "memory");
@@ -106,31 +102,28 @@ public:
         }
         else
         {
-            if (0 >= memcmp(&m_current->begin, &m->begin, sizeof(checkpoint)))
+            if (m_current->begin<m->begin)
             {
                 delete m;
                 return -1;
             }
             m->prev = m_current;
-            m_current->end.fileID = fileID;
-            m_current->end.offset = offset;
+            m_current->end = originCheckPoint;
             __asm__ __volatile__("sfence" ::: "memory");
             m_current = m;
             return 0;
         }
     }
-    int disableCurrent(uint64_t fileID, uint64_t offset)
+    int disableCurrent(uint64_t originCheckPoint)
     {
-        return put(NULL, fileID, offset);
+        return put(NULL, originCheckPoint);
     }
-    void purge(uint64_t fileID, uint64_t offset)
+    void purge(uint64_t originCheckPoint)
     {
-        checkpoint c =
-        { fileID, offset };
         MetaInfo * m = m_current;
         while (m != NULL)
         {
-            if (0 < memcmp(&m->end, &c, sizeof(checkpoint)))
+            if (originCheckPoint < m->end)
                 m = m->prev;
             else
                 break;
@@ -154,54 +147,55 @@ public:
 };
 struct dbInfo
 {
-    trieTree  tables;
+    trieTree tables;
+    uint64_t m_id;
     std::string charset;
 };
 metaDataCollection::metaDataCollection() :
-        m_dbs(MetaTimeline<trieTree>::destroy)
+        m_dbs(),m_maxTableId(0)
 {
     m_SqlParser = new sqlParser::sqlParser();
-    m_charsetSizeList.insertNCase((uint8_t*) "big5", (void*) (uint64_t) 2);
-    m_charsetSizeList.insertNCase((uint8_t*) "dec8", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "cp850", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "hp8", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "koi8r", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "latin1", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "latin2", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "swe7", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "ascii", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "ujis", (void*) (uint64_t) 3);
-    m_charsetSizeList.insertNCase((uint8_t*) "sjis", (void*) (uint64_t) 2);
-    m_charsetSizeList.insertNCase((uint8_t*) "hebrew", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "tis620", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "euckr", (void*) (uint64_t) 2);
-    m_charsetSizeList.insertNCase((uint8_t*) "koi8u", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "gb2312", (void*) (uint64_t) 2);
-    m_charsetSizeList.insertNCase((uint8_t*) "greek", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "cp1250", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "gbk", (void*) (uint64_t) 2);
-    m_charsetSizeList.insertNCase((uint8_t*) "latin5", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "armscii8", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "utf8", (void*) (uint64_t) 3);
-    m_charsetSizeList.insertNCase((uint8_t*) "ucs2", (void*) (uint64_t) 2);
-    m_charsetSizeList.insertNCase((uint8_t*) "cp866", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "keybcs2", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "macce", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "macroman", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "cp852", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "latin7", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "utf8mb4", (void*) (uint64_t) 4);
-    m_charsetSizeList.insertNCase((uint8_t*) "cp1251", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "utf16", (void*) (uint64_t) 4);
-    m_charsetSizeList.insertNCase((uint8_t*) "utf16le", (void*) (uint64_t) 4);
-    m_charsetSizeList.insertNCase((uint8_t*) "cp1256", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "cp1257", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "utf32", (void*) (uint64_t) 4);
-    m_charsetSizeList.insertNCase((uint8_t*) "binary", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "geostd8", (void*) (uint64_t) 1);
-    m_charsetSizeList.insertNCase((uint8_t*) "cp932", (void*) (uint64_t) 2);
-    m_charsetSizeList.insertNCase((uint8_t*) "eucjpms", (void*) (uint64_t) 3);
-    m_charsetSizeList.insertNCase((uint8_t*) "gb18030", (void*) (uint64_t) 4);
+    m_charsetSizeList.insert(std::pair<const char*,int>("big5", 2));
+    m_charsetSizeList.insert(std::pair<const char*,int>("dec8", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("cp850", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("hp8",  1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("koi8r",  1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("latin1",  1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("latin2",  1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("swe7",  1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("ascii",  1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("ujis", 3));
+    m_charsetSizeList.insert(std::pair<const char*,int>("sjis",  2));
+    m_charsetSizeList.insert(std::pair<const char*,int>("hebrew", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("tis620", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("euckr",  2));
+    m_charsetSizeList.insert(std::pair<const char*,int>("koi8u", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("gb2312", 2));
+    m_charsetSizeList.insert(std::pair<const char*,int>("greek", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("cp1250", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("gbk", 2));
+    m_charsetSizeList.insert(std::pair<const char*,int>("latin5", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("armscii8", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("utf8", 3));
+    m_charsetSizeList.insert(std::pair<const char*,int>("ucs2", 2));
+    m_charsetSizeList.insert(std::pair<const char*,int>("cp866", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("keybcs2", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("macce", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("macroman", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("cp852", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("latin7", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("utf8mb4", 4));
+    m_charsetSizeList.insert(std::pair<const char*,int>("cp1251", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>("utf16", 4));
+    m_charsetSizeList.insert(std::pair<const char*,int>("utf16le", 4));
+    m_charsetSizeList.insert(std::pair<const char*,int>("cp1256", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>( "cp1257", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>( "utf32", 4));
+    m_charsetSizeList.insert(std::pair<const char*,int>( "binary", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>( "geostd8", 1));
+    m_charsetSizeList.insert(std::pair<const char*,int>( "cp932", 2));
+    m_charsetSizeList.insert(std::pair<const char*,int>( "eucjpms", 3));
+    m_charsetSizeList.insert(std::pair<const char*,int>( "gb18030", 4));
 }
 metaDataCollection::~metaDataCollection()
 {
@@ -209,14 +203,14 @@ metaDataCollection::~metaDataCollection()
         delete m_SqlParser;
 }
 tableMeta * metaDataCollection::get(const char * database, const char * table,
-        uint64_t fileID, uint64_t offset)
+        uint64_t originCheckPoint)
 {
     MetaTimeline<dbInfo> * db =
             static_cast<MetaTimeline<dbInfo>*>(m_dbs.findNCase(
                     (const unsigned char*) database));
     if (db == NULL)
         return NULL;
-    dbInfo * currentDB = db->get(fileID, offset);
+    dbInfo * currentDB = db->get(originCheckPoint);
     if (currentDB == NULL)
         return NULL;
     MetaTimeline<tableMeta> * metas =
@@ -224,10 +218,19 @@ tableMeta * metaDataCollection::get(const char * database, const char * table,
                     (const unsigned char*) table));
     if (metas == NULL)
         return NULL;
-    return metas->get(fileID, offset);
+    return metas->get(originCheckPoint);
+}
+tableMeta *metaDataCollection::get(uint64_t tableID){
+    tableMetaWrap t = {tableID,nullptr};
+    leveldb::SkipList<tableMetaWrap*, tableIDComparator>::Iterator iter(m_allTables);
+    iter.Seek(&t);
+    if(iter.Valid())
+        return iter.key()->meta;
+    else
+        return nullptr;
 }
 int metaDataCollection::put(const char * database, const char * table,
-        tableMeta * meta, uint64_t fileID, uint64_t offset)
+        tableMeta * meta, uint64_t originCheckPoint)
 {
     MetaTimeline<dbInfo> * db =
             static_cast<MetaTimeline<dbInfo>*>(m_dbs.findNCase(
@@ -235,23 +238,24 @@ int metaDataCollection::put(const char * database, const char * table,
     bool newMeta = false;
     if (db == NULL)
         return -1;
-    dbInfo * currentDB = db->get(fileID, offset);
+    dbInfo * currentDB = db->get(originCheckPoint);
     MetaTimeline<tableMeta> * metas =
             static_cast<MetaTimeline<tableMeta>*>(currentDB->tables.findNCase(
                     (const unsigned char*) table));
     if (metas == NULL)
     {
         newMeta = true;
-        metas = new MetaTimeline<tableMeta>(meta, fileID, offset);
+        metas = new MetaTimeline<tableMeta>(meta, originCheckPoint);
+        metas->setID(m_maxTableId++);
     }
     else
     {
-        metas->put(meta, fileID, offset);
+        metas->put(meta, originCheckPoint);
     }
     if (newMeta)
     {
         __asm__ __volatile__("mfence" ::: "memory");
-        currentDB->tables.insertNCase((const unsigned char*) table, metas);
+        currentDB->tables.insert((const unsigned char*) table, metas);
     }
     return 0;
 }
@@ -284,7 +288,7 @@ static void copyColumn(columnMeta & column, const newColumnInfo* src)
     column.m_size = src->size;
 }
 int metaDataCollection::createTable(handle * h, const newTableInfo *t,
-        uint64_t fileID, uint64_t offset)
+        uint64_t originCheckPoint)
 {
     Table newTable = t->table;
     if (!h->dbName.empty())
@@ -318,15 +322,14 @@ int metaDataCollection::createTable(handle * h, const newTableInfo *t,
         {
             if (c->charset.empty())
                 column.m_charset = meta->m_charset;
-            void * _charsetSize = m_charsetSizeList.findNCase(
-                    (uint8_t*) column.m_charset.c_str());
-            if (_charsetSize == NULL)
+            CharsetTree::iterator citer = m_charsetSizeList.find(column.m_charset.c_str());
+            if (citer == m_charsetSizeList.end())
             {
                 printf("unknown charset %s\n", column.m_charset.c_str());
                 delete meta;
                 return -1;
             }
-            column.m_size *= (uint64_t) _charsetSize;
+            column.m_size *= citer->second;
         }
         meta->m_columnsCount++;
     }
@@ -385,8 +388,7 @@ int metaDataCollection::createTable(handle * h, const newTableInfo *t,
             continue;
     }
     if (0
-            != put(newTable.database.c_str(), newTable.table.c_str(), meta,
-                    fileID, offset))
+            != put(newTable.database.c_str(), newTable.table.c_str(), meta,originCheckPoint))
     {
         printf("insert new meta of table %s.%s failed",
                 newTable.database.c_str(), newTable.table.c_str());
@@ -396,7 +398,7 @@ int metaDataCollection::createTable(handle * h, const newTableInfo *t,
     return 0;
 }
 int metaDataCollection::createTableLike(handle * h, const newTableInfo *t,
-        uint64_t fileID, uint64_t offset)
+        uint64_t originCheckPoint)
 {
     Table newTable = t->table;
     if (!h->dbName.empty())
@@ -422,12 +424,11 @@ int metaDataCollection::createTableLike(handle * h, const newTableInfo *t,
         return -1;
     }
     tableMeta * likedMeta = get(likedTable.database.c_str(),
-            likedTable.table.c_str(), 0xffffffffffffffffUL,
-            0xffffffffffffffffUL);
+            likedTable.table.c_str(), 0xffffffffffffffffUL);
     if (likedMeta == NULL)
     {
         printf("create liked table %s.%s is not exist",
-                likedTable.database.c_str(), likedTable.table.c_str())
+                likedTable.database.c_str(), likedTable.table.c_str());
         return -1;
     }
     tableMeta * meta = new tableMeta;
@@ -435,7 +436,7 @@ int metaDataCollection::createTableLike(handle * h, const newTableInfo *t,
     meta->m_tableName = newTable.table;
     if (0
             != put(newTable.database.c_str(), newTable.table.c_str(), meta,
-                    fileID, offset))
+                    originCheckPoint))
     {
         printf("insert new meta of table %s.%s failed",
                 newTable.database.c_str(), newTable.table.c_str());
@@ -445,7 +446,7 @@ int metaDataCollection::createTableLike(handle * h, const newTableInfo *t,
     return 0;
 }
 int metaDataCollection::alterTable(handle * h, const newTableInfo *t,
-        uint64_t fileID, uint64_t offset)
+        uint64_t originCheckPoint)
 {
     Table newTable = t->table;
     if (!h->dbName.empty())
@@ -456,7 +457,7 @@ int metaDataCollection::alterTable(handle * h, const newTableInfo *t,
         return -1;
     }
     tableMeta * meta = get(newTable.database.c_str(), newTable.table.c_str(),
-            0xffffffffffffffffUL, 0xffffffffffffffffUL);
+            0xffffffffffffffffUL);
     if (meta == NULL)
     {
         printf("unknown table %s.%s\n", newTable.database.c_str(),
@@ -480,15 +481,14 @@ int metaDataCollection::alterTable(handle * h, const newTableInfo *t,
         {
             if (c->charset.empty())
                 column.m_charset = meta->m_charset;
-            void * _charsetSize = m_charsetSizeList.findNCase(
-                    (uint8_t*) column.m_charset.c_str());
-            if (_charsetSize == NULL)
+            CharsetTree::iterator citer = m_charsetSizeList.find(column.m_charset.c_str());
+            if(citer == m_charsetSizeList.end())
             {
                 printf("unknown charset %s\n", column.m_charset.c_str());
                 delete newMeta;
                 return -1;
             }
-            column.m_size *= (uint64_t) _charsetSize;
+            column.m_size *= citer->second;
         }
         columnMeta * modifiedColumn = meta->getColumn(c->name.c_str());
         if (c->after)
@@ -591,7 +591,7 @@ int metaDataCollection::alterTable(handle * h, const newTableInfo *t,
     }
     if (0
             != put(newTable.database.c_str(), newTable.table.c_str(), newMeta,
-                    fileID, offset))
+                    originCheckPoint))
     {
         printf("insert new meta of table %s.%s failed",
                 newTable.database.c_str(), newTable.table.c_str());
@@ -602,28 +602,28 @@ int metaDataCollection::alterTable(handle * h, const newTableInfo *t,
 }
 
 int metaDataCollection::processNewTable(handle * h, const newTableInfo *t,
-        uint64_t fileID, uint64_t offset)
+        uint64_t originCheckPoint)
 {
     if (t->type == newTableInfo::CREATE_TABLE)
     {
         if (t->createLike)
         {
-            return createTableLike(h, t, fileID, offset);
+            return createTableLike(h, t, originCheckPoint);
         }
         else
         {
-            return createTable(h, t, fileID, offset);
+            return createTable(h, t, originCheckPoint);
         }
     }
     else if (t->type == newTableInfo::ALTER_TABLE)
     {
-        return alterTable(h, t, fileID, offset);
+        return alterTable(h, t, originCheckPoint);
     }
     else
         return -1;
 }
 int metaDataCollection::processOldTable(handle * h, const Table *table,
-        uint64_t fileID, uint64_t offset)
+        uint64_t originCheckPoint)
 {
     MetaTimeline<dbInfo> * db = NULL;
     if (table->database.empty())
@@ -638,7 +638,7 @@ int metaDataCollection::processOldTable(handle * h, const Table *table,
                 (const unsigned char*) table->database.c_str()));
     if (db == NULL)
         return -1;
-    dbInfo * currentDB = db->get(fileID, offset);
+    dbInfo * currentDB = db->get(originCheckPoint);
     if (currentDB == NULL)
         return -1;
     MetaTimeline<tableMeta> * metas =
@@ -646,10 +646,10 @@ int metaDataCollection::processOldTable(handle * h, const Table *table,
                     (const unsigned char*) table));
     if (metas == NULL)
         return -1;
-    return metas->disableCurrent(fileID, offset);
+    return metas->disableCurrent(originCheckPoint);
 }
 int metaDataCollection::processDatabase(const databaseInfo * database,
-        uint64_t fileID, uint64_t offset)
+        uint64_t originCheckPoint)
 {
     MetaTimeline<dbInfo> * db =
             static_cast<MetaTimeline<dbInfo>*>(m_dbs.findNCase(
@@ -663,10 +663,10 @@ int metaDataCollection::processDatabase(const databaseInfo * database,
             current->charset = database->charset;
             if (current->charset.empty())
                 current->charset = m_defaultCharset;
-            db = new MetaTimeline<dbInfo>(current, fileID, offset);
+            db = new MetaTimeline<dbInfo>(current, originCheckPoint);
             __asm__ __volatile__("mfence" ::: "memory");
             if (0
-                    != m_dbs.insertNCase(
+                    != m_dbs.insert(
                             (const uint8_t *) database->name.c_str(), db))
             {
                 delete db;
@@ -679,7 +679,7 @@ int metaDataCollection::processDatabase(const databaseInfo * database,
             return -1;
     }
 
-    if (NULL == (current = db->get(fileID, offset)))
+    if (NULL == (current = db->get(originCheckPoint)))
     {
         if (database->type == databaseInfo::CREATE_DATABASE)
         {
@@ -688,7 +688,7 @@ int metaDataCollection::processDatabase(const databaseInfo * database,
             if (current->charset.empty())
                 current->charset = m_defaultCharset;
             __asm__ __volatile__("mfence" ::: "memory");
-            if (0 != db->put(current, fileID, offset))
+            if (0 != db->put(current, originCheckPoint))
             {
                 delete current;
                 return -1;
@@ -710,14 +710,13 @@ int metaDataCollection::processDatabase(const databaseInfo * database,
     }
     else if (database->type == databaseInfo::DROP_DATABASE)
     {
-        return db->disableCurrent(fileID, offset);
+        return db->disableCurrent(originCheckPoint);
     }
     else
         return -1;
 }
 
-int metaDataCollection::processDDL(const char * ddl, uint64_t fileID,
-        uint64_t offset)
+int metaDataCollection::processDDL(const char * ddl, uint64_t originCheckPoint)
 {
     handle * h = NULL;
     if (OK != m_SqlParser->parse(h, ddl))
@@ -728,34 +727,35 @@ int metaDataCollection::processDDL(const char * ddl, uint64_t fileID,
     handle * currentHandle = h;
     while (currentHandle != NULL)
     {
-        if (currentHandle->meta.database.type
+        metaChangeInfo * meta = static_cast<metaChangeInfo*>(currentHandle->userData);
+        if (meta->database.type
                 != databaseInfo::MAX_DATABASEDDL_TYPE)
         {
-            processDatabase(&currentHandle->meta.database, fileID, offset);
+            processDatabase(&meta->database, originCheckPoint);
         }
         for (list<newTableInfo*>::const_iterator iter =
-                currentHandle->meta.newTables.begin();
-                iter != currentHandle->meta.newTables.end(); iter++)
+                meta->newTables.begin();
+                iter != meta->newTables.end(); iter++)
         {
-            processNewTable(currentHandle, *iter, fileID, offset);
+            processNewTable(currentHandle, *iter, originCheckPoint);
         }
-        for (list<Table>::const_iterator iter = currentHandle->meta.oldTables;
-                iter != currentHandle->meta.oldTables.end(); iter++)
+        for (list<Table>::const_iterator iter = meta->oldTables;
+                iter != meta->oldTables.end(); iter++)
         {
-            processOldTable(currentHandle, &(*iter), fileID, offset);
+            processOldTable(currentHandle, &(*iter), originCheckPoint);
         }
     }
     return 0;
 }
-int metaDataCollection::purge(uint64_t fileID, uint64_t offset)
+int metaDataCollection::purge(uint64_t originCheckPoint)
 {
     for(trieTree::iterator iter = m_dbs.begin();iter.valid();iter.next())
     {
         MetaTimeline<dbInfo> * db = static_cast<MetaTimeline<dbInfo>*>(iter.value() );
         if(db == NULL)
             continue;
-        db->purge(fileID,offset);
-        dbInfo * dbMeta = db->get(0xffffffffffffffffUL,0xffffffffffffffffUL);
+        db->purge(originCheckPoint);
+        dbInfo * dbMeta = db->get(0xffffffffffffffffUL);
         if(dbMeta == NULL)
             continue;
         for(trieTree::iterator titer = dbMeta->tables.begin();titer.valid();titer.next())
@@ -763,7 +763,7 @@ int metaDataCollection::purge(uint64_t fileID, uint64_t offset)
             MetaTimeline<tableMeta> * table = static_cast<MetaTimeline<tableMeta>*>(titer.value() );
             if(table == NULL)
                 continue;
-            table->purge(fileID,offset);
+            table->purge(originCheckPoint);
         }
     }
     return 0;

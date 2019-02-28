@@ -1326,3 +1326,68 @@
 		{"K":"_N_","F":"useDatabase"}	
 	]
 }
+{
+	"ID":240001,
+	"name":"select column",
+	"OR":true,
+	"C":[
+		{"K":"_S_:*"},
+		{"C":[
+			{"K":"_S_:count"},
+			{"K":"_S_:("},
+			{"K":"_AS_"},
+			{"K":"_S_:)"}
+		]},
+		{"C":[
+			{"K":"_S_:sum"},
+			{"K":"_S_:("},
+			{"K":"_AS_"},
+			{"K":"_S_:)"}
+		]},
+		{"K":"_AS_"}
+	]
+}
+{
+	"ID":24000,
+	"name":"select"
+	"HEAD":true,
+	"C":[
+		{"K":"_S_:SELECT"},
+		{"OPT":true,"C":[
+			{"K":"_S_:STREAM"},
+			{"OPT":true,"C":[
+				{"K":"_S_:START"},
+				{"K":"_S_:FROM"},
+				{"OR":true,"C":[
+					{"C":[
+						{"KEY":"_S_:TIMESTAMP"},
+						{"K":"_NUM_"}
+					]},
+					{"C":[
+						{"KEY":"_S_:OFFSET"},
+						{"K":"_NUM_"}
+					]},
+					{"C":[
+						{"KEY":"_S_:ID"},
+						{"K":"_NUM_"}
+					]}
+				]}
+			]},
+			{"OPT":true,"C":[
+				{"K":"_S_:WINDOW"},
+				{"K":"_S_:SIZE"},
+				{"K":"_NUM_"}
+			]}
+		]}
+		
+		{"OPT":true,"K":"_S_:DISTINCT"},
+		{"C":[
+			{"LOOP":true,"C":[
+				{"INCLUDE":2001},
+				{"KEY":"_S_:,"}
+			]}
+			{"INCLUDE":2001}
+		]},
+		{"K":"_S_:FROM"},
+	]
+}

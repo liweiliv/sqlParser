@@ -8,7 +8,7 @@
 #ifndef MYSQLTYPES_H_
 #define MYSQLTYPES_H_
 
-typedef enum enum_field_types {
+typedef enum FiledType {
   MYSQL_TYPE_DECIMAL, MYSQL_TYPE_TINY,
   MYSQL_TYPE_SHORT,  MYSQL_TYPE_LONG,
   MYSQL_TYPE_FLOAT,  MYSQL_TYPE_DOUBLE,

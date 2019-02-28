@@ -293,11 +293,21 @@ struct tableMeta
     std::string  m_charset;
     columnMeta * m_columns;
     uint32_t m_columnsCount;
-    uint64_t m_tableID;
+    uint64_t m_id;
     stringArray m_primaryKey;
+    uint16_t * m_primaryKeyIdxs;
     indexMeta * m_uniqueKeys;
     uint16_t m_uniqueKeysCount;
-    tableMeta():m_columns(NULL),m_columnsCount(0),m_tableID(0),m_uniqueKeys(NULL),m_uniqueKeysCount(0)
+    uint16_t ** m_uniqueKeyIdxs;
+    static inline uint16_t tableVersion(uint64_t tableIDInfo)
+    {
+        return tableIDInfo&0xffff;
+    }
+    static inline int64_t tableID (uint64_t tableIDInfo)
+    {
+        return tableIDInfo&0xffffffffffff0000ul;
+    }
+    tableMeta():m_columns(NULL),m_columnsCount(0),m_id(0),m_primaryKeyIdxs(nullptr),m_uniqueKeys(nullptr),m_uniqueKeysCount(0),m_uniqueKeyIdxs(nullptr)
     {
     }
     ~tableMeta()
@@ -319,19 +329,50 @@ struct tableMeta
         }
         else
             m_columns = NULL;
-        m_tableID = t.m_tableID;
+        m_id = t.m_id;
+        /*copy primary key*/
         m_primaryKey = t.m_primaryKey;
+        if(m_primaryKeyIdxs!=nullptr)
+        {
+            delete []m_primaryKeyIdxs;
+            m_primaryKeyIdxs = nullptr;
+        }
+        if(m_primaryKey.m_Count>0)
+        {
+            m_primaryKeyIdxs = new uint16_t[m_primaryKey.m_Count];
+            memcpy(m_primaryKeyIdxs,t.m_primaryKeyIdxs,sizeof(uint16_t)*m_primaryKey.m_Count);
+        }
+        /*copy unique key*/
+        if(m_uniqueKeyIdxs!=nullptr)
+        {
+            for(int i =0 ;i<m_uniqueKeysCount;i++)
+            {
+                if(m_uniqueKeyIdxs[i]!=nullptr)
+                    delete []m_uniqueKeyIdxs[i];
+            }
+            delete  []m_uniqueKeyIdxs;
+            m_uniqueKeyIdxs = nullptr;
+        }
+
         if((m_uniqueKeysCount=t.m_uniqueKeysCount)>0)
         {
+            m_uniqueKeyIdxs = new uint16_t*[m_uniqueKeysCount];
             m_uniqueKeys = new indexMeta[m_uniqueKeysCount];
             for(int i =0 ;i<m_uniqueKeysCount;i++)
             {
+                if(t.m_uniqueKeyIdxs[i]!=nullptr)
+                {
+                    m_uniqueKeyIdxs[i] = new uint16_t[t.m_uniqueKeys[i].columns.m_Count];
+                    memcpy(m_uniqueKeyIdxs[i],t.m_uniqueKeyIdxs[i],sizeof(uint16_t)*t.m_uniqueKeys[i].columns.m_Count);
+                }
+                else
+                    m_uniqueKeyIdxs[i] = nullptr;
                 m_uniqueKeys[i].columns = t.m_uniqueKeys[i].columns;
                 m_uniqueKeys[i].name = t.m_uniqueKeys[i].name;
             }
         }
         else
-            m_uniqueKeys = NULL;
+            m_uniqueKeys = nullptr;
         return *this;
     }
     columnMeta * getColumn(const char * columnName)
@@ -352,7 +393,7 @@ struct tableMeta
         }
         return NULL;
     }
-    int dropColumn(uint32_t columnIndex)
+    int dropColumn(uint32_t columnIndex)//todo ,update key
     {
         if(columnIndex>=m_columnsCount)
             return -1;
@@ -363,6 +404,25 @@ struct tableMeta
         {
             columns[idx-1]=m_columns[idx];
             columns[idx-1].m_columnIndex--;
+        }
+        if(m_uniqueKeyIdxs!=nullptr)
+        {
+            for(uint16_t idx = 0;idx<m_uniqueKeysCount;idx++)
+            {
+                for(uint16_t i = 0;i<m_uniqueKeys[idx].columns.m_Count;i++)
+                {
+                    if(m_uniqueKeyIdxs[idx][i]>columnIndex)
+                        m_uniqueKeyIdxs[idx][i]--;
+                }
+            }
+        }
+        if(m_primaryKeyIdxs!=nullptr)
+        {
+            for(uint16_t i = 0;i<m_primaryKey.m_Count;i++)
+            {
+                if(m_primaryKeyIdxs[i]>columnIndex)
+                    m_primaryKeyIdxs[i]--;
+            }
         }
         delete []m_columns;
         m_columns = columns;
@@ -395,6 +455,25 @@ struct tableMeta
                 columns[idx]=m_columns[idx-1];
                 columns->m_columnIndex++;
             }
+            if(m_uniqueKeyIdxs!=nullptr)
+            {
+                for(uint16_t idx = 0;idx<m_uniqueKeysCount;idx++)
+                {
+                    for(uint16_t i = 0;i<m_uniqueKeys[idx].columns.m_Count;i++)
+                    {
+                        if(m_uniqueKeyIdxs[idx][i]>before->m_columnIndex)
+                            m_uniqueKeyIdxs[idx][i]++;
+                    }
+                }
+            }
+            if(m_primaryKeyIdxs!=nullptr)
+            {
+                for(uint16_t i = 0;i<m_primaryKey.m_Count;i++)
+                {
+                    if(m_primaryKeyIdxs[i]>before->m_columnIndex)
+                        m_primaryKeyIdxs[i]++;
+                }
+            }
         }
         else
         {
@@ -418,6 +497,8 @@ struct tableMeta
             c->m_isPrimary = false;
         }
         m_primaryKey.clean();
+        delete [] m_primaryKeyIdxs ;
+        m_primaryKeyIdxs = nullptr;
         return 0;
     }
     int createPrimaryKey(const std::list<std::string> &columns)
@@ -425,6 +506,7 @@ struct tableMeta
         if(m_primaryKey.m_Count!=0)
             return -1;
         m_primaryKey = columns;
+        m_primaryKeyIdxs = new uint16_t[m_primaryKey.m_Count];
         for(uint32_t idx = 0;idx<m_primaryKey.m_Count;idx++)
         {
             columnMeta * c = getColumn(m_primaryKey.m_array[idx]);
@@ -434,7 +516,9 @@ struct tableMeta
                 return -1;
             }
             c->m_isPrimary = true;
+            m_primaryKeyIdxs[idx] = c->m_columnIndex;
         }
+
         return 0;
     }
     int dropUniqueKey(const char *ukName)
@@ -448,6 +532,14 @@ struct tableMeta
         return -1;
 DROP:
         /*copy data*/
+        if(m_uniqueKeyIdxs[idx]!=nullptr)
+        {
+            delete []m_uniqueKeyIdxs[idx];
+            m_uniqueKeyIdxs[idx] = nullptr;
+        }
+        for(int i=idx;i<m_uniqueKeysCount-1;i++)
+            m_uniqueKeyIdxs[i] = m_uniqueKeyIdxs[i+1];
+        m_uniqueKeyIdxs[m_uniqueKeysCount-1] = nullptr;
         indexMeta * newIndex = new indexMeta[m_uniqueKeysCount-1];
         for(int i=0;i<idx;i++)
         {
@@ -485,6 +577,9 @@ COLUMN_IS_STILL_UK:
         if(getUniqueKey(ukName)!=NULL)
             return -1;
         /*copy data*/
+        uint16_t ** newUkIdxs = new uint16_t*[m_uniqueKeysCount+1];
+        for(int i=0;i<m_uniqueKeysCount;i++)
+            newUkIdxs[i] = m_uniqueKeyIdxs[i];
         indexMeta * newIndex = new indexMeta[m_uniqueKeysCount+1];
         for(int i=0;i<m_uniqueKeysCount;i++)
         {
@@ -493,16 +588,24 @@ COLUMN_IS_STILL_UK:
         }
         newIndex[m_uniqueKeysCount].columns = columns;
         newIndex[m_uniqueKeysCount].name = ukName;
+        newUkIdxs[m_uniqueKeysCount] = new uint16_t[newIndex[m_uniqueKeysCount].columns.m_Count];
         for(int i = 0;i<newIndex[m_uniqueKeysCount].columns.m_Count;i++)
         {
             columnMeta * column = getColumn(newIndex[m_uniqueKeysCount].columns.m_array[i]);
             if(column == NULL)
             {
                 delete []newIndex;
+                delete []newUkIdxs[m_uniqueKeysCount];
+                delete []newUkIdxs;
+                return -1;
             }
+            newUkIdxs[m_uniqueKeysCount][i] = column->m_columnIndex;
             column->m_isUnique = true;
         }
+        delete [] m_uniqueKeys;
         m_uniqueKeys = newIndex;
+        delete [] m_uniqueKeyIdxs;
+        m_uniqueKeyIdxs = newUkIdxs;
         m_uniqueKeysCount++;
         return 0;
     }
