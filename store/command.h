@@ -87,8 +87,7 @@ public:
                 user->setError(ERROR_ILLEGAL_CMD, "unknown command");
                 return -1;
             }
-            return m_userManager->auth(user, auth.username, auth.passWordMd5)
-                    != 0;
+            return m_userManager->auth(user, auth.username, auth.passWordMd5);
         }
         case CMD_SQL:
         {

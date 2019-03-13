@@ -9,7 +9,8 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "port/port.h"
+#include "atomic_pointer.h"
+//#include "port.h"
 
 namespace leveldb {
 

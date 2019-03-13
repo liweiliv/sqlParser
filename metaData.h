@@ -27,7 +27,7 @@ struct stringArray
     {
         if(m_Count>0)
         {
-            for(int i=0;i<m_Count;i++)
+            for(uint32_t i=0;i<m_Count;i++)
                 free(m_array[i]);
             free(m_array);
         }
@@ -40,7 +40,7 @@ struct stringArray
         m_Count = c.m_Count;
         if(m_Count>0)
         {
-            for(int i=0;i<m_Count;i++)
+            for(uint32_t i=0;i<m_Count;i++)
             {
                 uint32_t size = strlen(c.m_array[i]);
                 m_array[i] = (char*)malloc(size+1);
@@ -82,7 +82,7 @@ struct columnMeta
     bool m_isUnique;
     bool m_generated;
     columnMeta():m_columnType(0),m_columnIndex(0),m_size(0),m_byteSize(0),m_precision(0),m_decimals(0),
-            m_setAndEnumValueList(NULL),m_signed(false),m_isPrimary(false),m_isUnique(false),m_generated(false)
+            m_setAndEnumValueList(),m_signed(false),m_isPrimary(false),m_isUnique(false),m_generated(false)
     {}
     columnMeta &operator =(const columnMeta &c)
     {
@@ -249,7 +249,7 @@ struct columnMeta
         case MYSQL_TYPE_ENUM:
         {
             sql.append("ENUM (");
-            for(int idx =0 ;idx<m_setAndEnumValueList.m_Count;idx++)
+            for(uint32_t idx =0 ;idx<m_setAndEnumValueList.m_Count;idx++)
             {
                 if(idx>0)
                     sql.append(",");
@@ -261,7 +261,7 @@ struct columnMeta
         case MYSQL_TYPE_SET:
         {
             sql.append("SET (");
-            for(int idx =0 ;idx<m_setAndEnumValueList.m_Count;idx++)
+            for(uint32_t idx =0 ;idx<m_setAndEnumValueList.m_Count;idx++)
             {
                 if(idx>0)
                     sql.append(",");
@@ -324,7 +324,7 @@ struct tableMeta
         if((m_columnsCount=t.m_columnsCount)>0)
         {
             m_columns = new columnMeta[m_columnsCount];
-            for(int i =0 ;i<m_columnsCount;i++)
+            for(uint32_t i =0 ;i<m_columnsCount;i++)
                 m_columns[i] = t.m_columns[i];
         }
         else
@@ -377,7 +377,7 @@ struct tableMeta
     }
     columnMeta * getColumn(const char * columnName)
     {
-        for(int i=0;i<m_columnsCount;i++)
+        for(uint32_t i=0;i<m_columnsCount;i++)
         {
             if(strcmp(m_columns[i].m_columnName.c_str(),columnName)==0)
                 return &m_columns[i];
@@ -386,10 +386,10 @@ struct tableMeta
     }
     indexMeta *getUniqueKey(const char *UniqueKeyname)
     {
-        for(int i=0;i<m_uniqueKeysCount;i++)
+        for(uint16_t i=0;i<m_uniqueKeysCount;i++)
         {
             if(strcmp(m_uniqueKeys[i].name.c_str(),UniqueKeyname)==0)
-                return &m_columns[i];
+                return &m_uniqueKeys[i];
         }
         return NULL;
     }
@@ -446,10 +446,10 @@ struct tableMeta
             if(before == NULL)
                 return -2;
             columnMeta * columns = new columnMeta[m_columnsCount+1];
-            column->m_columnIndex = before->m_columnIndex+1;
             for(uint32_t idx = 0;idx<=before->m_columnIndex;idx++)
                 columns[idx]=m_columns[idx];
             columns[column->m_columnIndex] = *column;
+            columns[column->m_columnIndex].m_columnIndex = before->m_columnIndex+1;
             for(uint32_t idx = column->m_columnIndex+1;idx<=m_columnsCount;idx++)
             {
                 columns[idx]=m_columns[idx-1];
@@ -480,8 +480,8 @@ struct tableMeta
             columnMeta * columns = new columnMeta[m_columnsCount+1];
             for(uint32_t idx = 0;idx<=m_columnsCount;idx++)
                 columns[idx]=m_columns[idx-1];
-            column->m_columnIndex = m_columnsCount;
-            columns[m_columnsCount] = column;
+            columns[m_columnsCount] = *column;
+            columns[m_columnsCount].m_columnIndex = m_columnsCount;
         }
         m_columnsCount++;
         return 0;
@@ -546,7 +546,7 @@ DROP:
             newIndex[i].name = m_uniqueKeys[i].name;
             newIndex[i].columns = m_uniqueKeys[i].columns;
         }
-        for(int i=idx+1;i<m_uniqueKeysCount;i++)
+        for(uint16_t i=idx+1;i<m_uniqueKeysCount;i++)
         {
             newIndex[i-1].name = m_uniqueKeys[i].name;
             newIndex[i-1].columns = m_uniqueKeys[i].columns;
@@ -556,11 +556,11 @@ DROP:
         m_uniqueKeysCount--;
 
         /*update columns */
-        for(int i = 0;i<oldUK[idx].columns.m_Count;i++)
+        for(uint32_t i = 0;i<oldUK[idx].columns.m_Count;i++)
         {
-            for(int j =0;j<m_uniqueKeysCount;j++)
+            for(uint16_t j =0;j<m_uniqueKeysCount;j++)
             {
-                for(int k = 0;k<m_uniqueKeys[j].columns.m_Count;k++)
+                for(uint32_t k = 0;k<m_uniqueKeys[j].columns.m_Count;k++)
                 {
                     if(strcmp(m_uniqueKeys[j].columns.m_array[k],oldUK[idx].columns.m_array[i])==0)
                         goto COLUMN_IS_STILL_UK;
@@ -589,7 +589,7 @@ COLUMN_IS_STILL_UK:
         newIndex[m_uniqueKeysCount].columns = columns;
         newIndex[m_uniqueKeysCount].name = ukName;
         newUkIdxs[m_uniqueKeysCount] = new uint16_t[newIndex[m_uniqueKeysCount].columns.m_Count];
-        for(int i = 0;i<newIndex[m_uniqueKeysCount].columns.m_Count;i++)
+        for(uint32_t i = 0;i<newIndex[m_uniqueKeysCount].columns.m_Count;i++)
         {
             columnMeta * column = getColumn(newIndex[m_uniqueKeysCount].columns.m_array[i]);
             if(column == NULL)
@@ -623,7 +623,7 @@ COLUMN_IS_STILL_UK:
         {
             sql.append(",\n");
             sql.append("PRIMARY KEY (");
-            for(int idx =0 ;idx<m_primaryKey.m_Count;idx++)
+            for(uint32_t idx =0 ;idx<m_primaryKey.m_Count;idx++)
             {
                 if(idx>0)
                     sql.append(",");
@@ -637,7 +637,7 @@ COLUMN_IS_STILL_UK:
             {
                 sql.append(",\n");
                 sql.append("UNIQUE KEY `").append(m_uniqueKeys[idx].name).append("` (");
-                for(int j =0 ;j<m_uniqueKeys[idx].columns.m_Count;j++)
+                for(uint32_t j =0 ;j<m_uniqueKeys[idx].columns.m_Count;j++)
                 {
                     if(j>0)
                         sql.append(",");

@@ -8,6 +8,8 @@
 #ifndef RECORD_H_
 #define RECORD_H_
 #include <stdint.h>
+#include <stdlib.h>
+#include <assert.h>
 namespace DATABASE_INCREASE
 {
 struct recordHead
@@ -59,6 +61,7 @@ struct record
         void ** queue;
     };
     uint16_t hashCount;
+    record(){}
     record(const char * data){
         this->data = data;
         head = (recordHead*)data;
@@ -83,7 +86,6 @@ struct TableMetaMessage :public record
       * [16 bit uk m column 1 id ]...[16 bit uk m column n id ]
      * */
     uint64_t tableMetaID;
-    uint32_t tableVersion;
     const char * database;
     const char * table;
     const char * charset;
@@ -93,19 +95,18 @@ struct TableMetaMessage :public record
     const uint16_t * primaryKeys;
     uint16_t uniqueKeyCount;
     const uint16_t * uniqueKeyColumnCounts;
-    const uint16_t ** uniqueKeys;
+    uint16_t ** uniqueKeys;
     /*-----------------------------------------------*/
     TableMetaMessage(const char * data):record(data){
         const char * ptr = data;
         tableMetaID = *(uint64_t*)(ptr+head->headSize);
-        tableVersion = *(uint32_t*)(ptr+head->headSize+sizeof(tableMetaID));
-        database = ptr+head->headSize+sizeof(tableMetaID)+sizeof(tableVersion)+1;
+        database = ptr+head->headSize+sizeof(tableMetaID)+1;
         table = database+*(uint8_t*)(database-1);
         charset = table+*(uint8_t*)(table-1);
         columnCount = *(uint16_t*)(charset+*(uint8_t*)(charset-1));
         columns = (columnDef*)(charset+*(uint8_t*)(charset-1)+sizeof(columnCount));
         ptr = (const char*)&columns[columnCount];
-        assert(ptr-data<data+head->headSize+sizeof(primaryKeyColumnCount));
+        assert((uint32_t)(ptr-data)<head->headSize+sizeof(primaryKeyColumnCount));
         primaryKeyColumnCount = *(uint16_t*)ptr;
         if(primaryKeyColumnCount !=0)
         {
@@ -128,7 +129,6 @@ struct TableMetaMessage :public record
                 uniqueKeys[idx] = (uint16_t*)ptr;
                 ptr = (const char*)&uniqueKeys[idx][uniqueKeyColumnCounts[idx]];
             }
-            assert(ptr-data<data+head->headSize+sizeof(primaryKeyColumnCount));
         }
         else
         {
@@ -172,6 +172,7 @@ struct DMLRecord:public record
     uint32_t * oldColumnSizes;
     const char ** oldColumns;
     uint8_t *updatedBitmap;
+    DMLRecord(){}
     /*----------------------------------------------*/
     DMLRecord(const char * data,void * mem = nullptr)  :
         record(data),outerMem(mem!=nullptr)
@@ -189,8 +190,8 @@ struct DMLRecord:public record
         {
             newColumnSizes = (uint32_t*)ptr;
             ptr+=sizeof(uint32_t)*dmlHead->columnCount;
-            newColumns = mem;
-            mem += dmlHead->columnCount;
+            newColumns = (const char **)mem;
+            mem = (char*)mem+dmlHead->columnCount;
             for(uint16_t idx = 0;idx<dmlHead->columnCount;idx++)
             {
                 newColumns[idx] = ptr;
@@ -206,7 +207,7 @@ struct DMLRecord:public record
         {
             oldColumnSizes = (uint32_t*)ptr;
             ptr+=sizeof(uint32_t)*dmlHead->columnCount;
-            oldColumns = mem;
+            oldColumns = (const char**)mem;
             for(uint16_t idx = 0;idx<dmlHead->columnCount;idx++)
             {
                 oldColumns[idx] = ptr;
