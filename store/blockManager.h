@@ -169,7 +169,7 @@ private:
 
         newBlock->m_blockID = ++m_maxBlockID;
         m_blocks.set(newBlock->m_blockID, newBlock);
-        m_current->flag|=BLOCK_FLAG_FINISHED;
+        m_current->m_flag|=BLOCK_FLAG_FINISHED;
 
         m_current = newBlock;
         if (m_lastFlushedFileID.load(std::memory_order_relaxed)
@@ -195,7 +195,7 @@ private:
         case appendingBlock::OK:
             return 0;
         case appendingBlock::FULL:
-            m_current->flag |= BLOCK_FLAG_FINISHED;
+            m_current->m_fd |= BLOCK_FLAG_FINISHED;
             if(!createNewBlock())
                 return -1;
             return insert(r);
@@ -234,12 +234,12 @@ private:
                 b = m_blocks[id];
                 if(b == nullptr)
                     continue;
-                if(!(b->flag&BLOCK_FLAG_FLUSHED))
+                if(!(b->m_flag&BLOCK_FLAG_FLUSHED))
                     break;
             }
             if(b == nullptr) //no block exist
             return 0;
-            if(b->flag&BLOCK_FLAG_FLUSHED)//last file has been flushed ,return
+            if(b->m_flag&BLOCK_FLAG_FLUSHED)//last file has been flushed ,return
             {
                 m_lastFlushedFileID.store(b->m_blockID,std::memory_order_release);
                 return 0;
@@ -250,7 +250,7 @@ private:
         {
             if(nullptr==(b = m_blocks[m_lastFlushedFileID.load(std::memory_order_relaxed)+1]))
                 break;
-            if(!((b->flag&BLOCK_FLAG_FINISHED)&&!(b->flag&BLOCK_FLAG_FLUSHED)))
+            if(!((b->m_flag&BLOCK_FLAG_FINISHED)&&!(b->m_flag&BLOCK_FLAG_FLUSHED)))
                 break;
             if(b->flush())
             {
@@ -315,7 +315,7 @@ public:
             block * nextBlock = static_cast<block*>(m_manager->m_blocks.get(m_current->m_blockID));
             if(nextBlock==nullptr)
                 return BLOCKED;
-            if(nextBlock->flag&BLOCK_FLAG_APPENDING)
+            if(nextBlock->m_flag&BLOCK_FLAG_APPENDING)
             {
                 appendingBlockIterator * iter = new appendingBlockIterator(nextBlock,&m_filter);
                 iterator * tmp = m_blockIter;
