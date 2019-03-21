@@ -167,7 +167,6 @@ struct DMLRecord:public record
     bool outerMem;
     DMLRecordHead *dmlHead;
     TableMetaMessage * meta;
-    uint32_t * newColumnSizes;
     const char ** newColumns;
     uint32_t * oldColumnSizes;
     const char ** oldColumns;
@@ -182,20 +181,17 @@ struct DMLRecord:public record
         meta = NULL;
         ptr += sizeof(DMLRecordHead);
         newColumns = oldColumns = NULL;
-        newColumnSizes = oldColumnSizes = NULL;
         /*alloc mem one time*/
         if(mem == nullptr)
             mem = malloc(dmlHead->columnCount*sizeof(const char*)*(head->type==UPDATE||head->type==REPLACE)?2:1);
         if(head->type == INSERT||head->type == UPDATE)
         {
-            newColumnSizes = (uint32_t*)ptr;
             ptr+=sizeof(uint32_t)*dmlHead->columnCount;
             newColumns = (const char **)mem;
             mem = (char*)mem+dmlHead->columnCount;
             for(uint16_t idx = 0;idx<dmlHead->columnCount;idx++)
             {
                 newColumns[idx] = ptr;
-                ptr+= newColumnSizes[idx];
             }
         }
         if(head->type == UPDATE)
@@ -221,6 +217,26 @@ struct DMLRecord:public record
         {do some thing}
            ...
          */
+    }
+    inline const char* oldColumnOfUpdateType(uint16_t index)
+    {
+        if(TEST_BITMAP(updatedBitmap,index))
+        {
+            return oldColumns[index];
+        }
+        else
+        {
+            return newColumns[index];
+        }
+    }
+    inline bool isKeyUpdated(const uint16_t * key,uint16_t keyColumnCount)
+    {
+        for(uint16_t idx=0;idx<keyColumnCount;idx++)
+        {
+            if(TEST_BITMAP(updatedBitmap,key[idx]))
+                return true;
+        }
+        return false;
     }
     ~DMLRecord(){
         if(outerMem)

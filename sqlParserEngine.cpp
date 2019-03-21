@@ -703,33 +703,33 @@ int sqlParser::LoadParseTreeFromFile(const char * file)
     free(buf);
     return ret;
 }
-char * preProcessSql(const char * sql,uint32_t version)
+char * preProcessSql(const char * sql, uint32_t version)
 {
-    char * newSql = (char*)malloc(strlen(sql)+1);
+    char * newSql = (char*) malloc(strlen(sql) + 1);
     const char * src = jumpOverSpace(sql);
     char * dest = newSql;
-    while(*src!='\0')
+    while (*src != '\0')
     {
         src = jumpOverSpace(src);
         const char * end;
-        if(strncmp(src,"/*",2)==0)//[/*!410000 DEFAULT CHARSET UTF8*/]
+        if (strncmp(src, "/*", 2) == 0) //[/*!410000 DEFAULT CHARSET UTF8*/]
         {
             const char * endOfComment = src;
-            if(false == jumpOverComment(endOfComment))
+            if (false == jumpOverComment(endOfComment))
             {
                 free(newSql);
                 return NULL;
             }
-            if(*(src+2)=='!')
+            if (*(src + 2) == '!')
             {
-                end = jumpOverSpace(src+3);
+                end = jumpOverSpace(src + 3);
                 uint32_t sqlVersion = atol(end);
-                if(sqlVersion<=version)
+                if (sqlVersion <= version)
                 {
                     src = jumpOverSpace(realEndOfWord(end));
-                    memcpy(dest,src,endOfComment-2-src);
-                    dest+=endOfComment-2-src;
-                    *dest=' ';
+                    memcpy(dest, src, endOfComment - 2 - src);
+                    dest += endOfComment - 2 - src;
+                    *dest = ' ';
                     dest++;
                 }
             }
@@ -738,14 +738,14 @@ char * preProcessSql(const char * sql,uint32_t version)
         else
         {
             const char * end = realEndOfWord(src);
-            memcpy(dest,src,end-src);
-            dest+=end-src;
-            *dest=' ';
+            memcpy(dest, src, end - src);
+            dest += end - src;
+            *dest = ' ';
             dest++;
             src = end;
         }
     }
-    *(dest-1) = '\0';
+    *(dest - 1) = '\0';
     return newSql;
 }
 parseValue sqlParser::parse(handle *&h, const char * sql)
@@ -775,8 +775,7 @@ parseValue sqlParser::parse(handle *&h, const char * sql)
         delete h;
         h = NULL;
         return NOT_MATCH;
-PARSE_SUCCESS:
-        statusInfo * s = currentHandle->head;
+        PARSE_SUCCESS: statusInfo * s = currentHandle->head;
         while (s)
         {
             if (s->parserFunc)
@@ -799,51 +798,52 @@ PARSE_SUCCESS:
         currentHandle = _h;
     }
 }
-};
+}
+;
 int main(int argc, char * argv[])
 {
-sqlParser::sqlParser p;
-initStackLog();
-initKeyWords();
-if (0 != p.LoadFuncs("sqlParserFuncs.cpp"))
-{
-    printf("load funcs failed\n");
-}
-if (0 != p.LoadParseTreeFromFile("ParseTree"))
-{
-    printf("load parse tree failed\n");
-}
-char * sql = NULL;
-if (argc == 1)
-    sql = (char*) "rename table `mp_time_limit20` to `mp_time_limit_20`";
-else
-{
-    int fd = open(argv[1], O_RDONLY);
-    if (fd < 0)
-        return -1;
-    uint32_t size = lseek(fd, 0, SEEK_END);
-    lseek(fd, 0, SEEK_SET);
-    sql = (char*) malloc(size + 1);
-    if (size != read(fd, sql, size))
+    sqlParser::sqlParser p;
+    initStackLog();
+    initKeyWords();
+    if (0 != p.LoadFuncs("sqlParserFuncs.cpp"))
     {
-        close(fd);
-        free(sql);
-        return -1;
+        printf("load funcs failed\n");
     }
-    sql[size] = '\0';
-}
+    if (0 != p.LoadParseTreeFromFile("ParseTree"))
+    {
+        printf("load parse tree failed\n");
+    }
+    char * sql = NULL;
+    if (argc == 1)
+        sql = (char*) "rename table `mp_time_limit20` to `mp_time_limit_20`";
+    else
+    {
+        int fd = open(argv[1], O_RDONLY);
+        if (fd < 0)
+            return -1;
+        uint32_t size = lseek(fd, 0, SEEK_END);
+        lseek(fd, 0, SEEK_SET);
+        sql = (char*) malloc(size + 1);
+        if (size != read(fd, sql, size))
+        {
+            close(fd);
+            free(sql);
+            return -1;
+        }
+        sql[size] = '\0';
+    }
 #if 0
-sqlParser::handle * h;
-p.parse(h, sql);
-string s;
-getFullStackLog(s);
-printf("%s\n", s.c_str());
-if (argc > 1)
+    sqlParser::handle * h;
+    p.parse(h, sql);
+    string s;
+    getFullStackLog(s);
+    printf("%s\n", s.c_str());
+    if (argc > 1)
     free(sql);
-destroyStackLog();
-destroyKeyWords();
+    destroyStackLog();
+    destroyKeyWords();
 #endif
-char * newSql = sqlParser::preProcessSql(sql,0xfffffffful);
-printf("%s\n",newSql);
+    char * newSql = sqlParser::preProcessSql(sql, 0xfffffffful);
+    printf("%s\n", newSql);
 
 }

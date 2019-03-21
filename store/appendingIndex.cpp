@@ -6,133 +6,379 @@
  */
 #include "appendingIndex.h"
 namespace STORE{
-    binaryType::binaryType():size(0),data(nullptr){
+    binaryType::binaryType():data(nullptr){
 
     }
-    binaryType::binaryType(uint32_t _size,char* _data):size(_size),data(_data){
+    binaryType::binaryType(char* _data):data(_data){
 
     }
-    binaryType::binaryType(const binaryType & dest)
+    binaryType::binaryType(const binaryType & dest):data(dest.data)
     {
-        size = dest.size;
-        data = dest.data;
     }
     binaryType binaryType::operator=(const binaryType & dest)
     {
-        size = dest.size;
         data = dest.data;
         return *this;
     }
-    bool binaryType::operator< (const binaryType & dest) const
+    int binaryType::compare (const binaryType & dest) const
     {
-        if(size == dest.size)
-            return memcmp(data,dest.data,size)>0;
-        else if(size>dest.size)
+        if(*(uint32_t*)data == *(uint32_t*)dest.data)
+            return memcmp(data+4,dest.data+4,*(uint32_t*)data);
+        else if(*(uint32_t*)data>*(uint32_t*)dest.data)
         {
-            if(memcmp(data,dest.data,size)>=0)
-                return true;
+            if(memcmp(data+4,dest.data+4,*(uint32_t*)data)>=0)
+                return -1;
             else
-                return false;
+                return 1;
         }
         else
         {
-            if(memcmp(data,dest.data,size)>0)
-                return true;
+            if(memcmp(data+4,dest.data+4,*(uint32_t*)dest.data)>0)
+                return 1;
             else
-                return false;
+                return -1;
         }
+    }
+    bool binaryType::operator< (const binaryType & dest) const
+    {
+        return  compare(dest)<0;
     }
     bool binaryType::operator> (const binaryType & dest) const
     {
-        if(size == dest.size)
-            return memcmp(data,dest.data,size)<0;
-        else if(size>dest.size)
+        return  compare(dest)>0;
+    }
+    void appendingIndex::appendMultiIndex(appendingIndex * index,DATABASE_INCREASE::DMLRecord * r,keyChildInfo * child,uint64_t id,bool keyUpdated)
+    {
+        void ** keyArrays = index->m_arena->Allocate((index->m_columnCount-1)*sizeof(void*));
+        if(keyUpdated)
         {
-            if(memcmp(data,dest.data,size)<=0)
-                return true;
-            else
-                return false;
+            for(uint16_t idx = 1;idx<index->m_columnCount;idx++)
+                keyArrays[idx-1] = r->oldColumnOfUpdateType(index->m_columnIdxs[idx]);
         }
         else
         {
-            if(memcmp(data,dest.data,size)<0)
-                return true;
-            else
-                return false;
+            for(uint16_t idx = 1;idx<index->m_columnCount;idx++)
+                keyArrays[idx-1] = r->newColumns[index->m_columnIdxs[idx]];
         }
-    }
-    void appendingIndex::appendMultiIndex(appendingIndex * index,DATABASE_INCREASE::DMLRecord * r,keyChildInfo * child,uint64_t id)
-    {
 
     }
     void appendingIndex::appendUint8Index(appendingIndex * index,DATABASE_INCREASE::DMLRecord * r,uint64_t id)
     {
         KeyTemplate<uint8_t> c;
-        c.key = *(uint8_t*)r->newColumns[index->m_columnIdxs[0]];
-        appendIndex(index,r,&c,id);
+        if(r->head->type == DATABASE_INCREASE::INSERT)
+        {
+            c.key = *(uint8_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::DELETE)
+        {
+            c.key = *(uint8_t*)r->oldColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::UPDATE||r->head->type == DATABASE_INCREASE::REPLACE)
+        {
+            c.key = *(uint8_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+            if(r->isKeyUpdated(index->m_columnIdxs,index->m_columnCount))
+            {
+                c.key = *(uint8_t*)r->oldColumnOfUpdateType(index->m_columnIdxs[0]);
+                appendIndex(index,r,&c,id,true);
+            }
+        }
+        else
+            abort();
     }
 
     void appendingIndex::appendInt8Index(appendingIndex * index,DATABASE_INCREASE::DMLRecord * r,uint64_t id)
     {
         KeyTemplate<int8_t> c;
-        c.key = *(int8_t*)r->newColumns[index->m_columnIdxs[0]];
-        appendIndex(index,r,&c,id);
+        if(r->head->type == DATABASE_INCREASE::INSERT)
+        {
+            c.key = *(int8_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::DELETE)
+        {
+            c.key = *(int8_t*)r->oldColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::UPDATE||r->head->type == DATABASE_INCREASE::REPLACE)
+        {
+            c.key = *(int8_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+            if(r->isKeyUpdated(index->m_columnIdxs,index->m_columnCount))
+            {
+                c.key = *(int8_t*)r->oldColumnOfUpdateType(index->m_columnIdxs[0]);
+                appendIndex(index,r,&c,id,true);
+            }
+        }
+        else
+            abort();
     }
     void appendingIndex::appendUint16Index(appendingIndex * index,DATABASE_INCREASE::DMLRecord * r,uint64_t id)
     {
         KeyTemplate<uint16_t> c;
-        c.key = *(uint16_t*)r->newColumns[index->m_columnIdxs[0]];
-        appendIndex(index,r,&c,id);
+        if(r->head->type == DATABASE_INCREASE::INSERT)
+        {
+            c.key = *(uint16_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::DELETE)
+        {
+            c.key = *(uint16_t*)r->oldColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::UPDATE||r->head->type == DATABASE_INCREASE::REPLACE)
+        {
+            c.key = *(uint16_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+            if(r->isKeyUpdated(index->m_columnIdxs,index->m_columnCount))
+            {
+                c.key = *(uint16_t*)r->oldColumnOfUpdateType(index->m_columnIdxs[0]);
+                appendIndex(index,r,&c,id,true);
+            }
+        }
+        else
+            abort();
     }
     void appendingIndex::appendInt16Index(appendingIndex * index,DATABASE_INCREASE::DMLRecord * r,uint64_t id)
     {
         KeyTemplate<int16_t> c;
-        c.key = *(int16_t*)r->newColumns[index->m_columnIdxs[0]];
-        appendIndex(index,r,&c,id);
+        if(r->head->type == DATABASE_INCREASE::INSERT)
+        {
+            c.key = *(int16_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::DELETE)
+        {
+            c.key = *(int16_t*)r->oldColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::UPDATE||r->head->type == DATABASE_INCREASE::REPLACE)
+        {
+            c.key = *(int16_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+            if(r->isKeyUpdated(index->m_columnIdxs,index->m_columnCount))
+            {
+                c.key = *(int16_t*)r->oldColumnOfUpdateType(index->m_columnIdxs[0]);
+                appendIndex(index,r,&c,id,true);
+            }
+        }
+        else
+            abort();
     }
     void appendingIndex::appendUint32Index(appendingIndex * index,DATABASE_INCREASE::DMLRecord * r,uint64_t id)
     {
         KeyTemplate<uint32_t> c;
-        c.key = *(uint32_t*)r->newColumns[index->m_columnIdxs[0]];
-        appendIndex(index,r,&c,id);
+        if(r->head->type == DATABASE_INCREASE::INSERT)
+        {
+            c.key = *(uint32_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::DELETE)
+        {
+            c.key = *(uint32_t*)r->oldColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::UPDATE||r->head->type == DATABASE_INCREASE::REPLACE)
+        {
+            c.key = *(uint32_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+            if(r->isKeyUpdated(index->m_columnIdxs,index->m_columnCount))
+            {
+                c.key = *(uint32_t*)r->oldColumnOfUpdateType(index->m_columnIdxs[0]);
+                appendIndex(index,r,&c,id,true);
+            }
+        }
+        else
+            abort();
     }
     void appendingIndex::appendInt32Index(appendingIndex * index,DATABASE_INCREASE::DMLRecord * r,uint64_t id)
     {
         KeyTemplate<int32_t> c;
-        c.key = *(int32_t*)r->newColumns[index->m_columnIdxs[0]];
-        appendIndex(index,r,&c,id);
+        if(r->head->type == DATABASE_INCREASE::INSERT)
+        {
+            c.key = *(int32_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::DELETE)
+        {
+            c.key = *(int32_t*)r->oldColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::UPDATE||r->head->type == DATABASE_INCREASE::REPLACE)
+        {
+            c.key = *(int32_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+            if(r->isKeyUpdated(index->m_columnIdxs,index->m_columnCount))
+            {
+                c.key = *(int32_t*)r->oldColumnOfUpdateType(index->m_columnIdxs[0]);
+                appendIndex(index,r,&c,id,true);
+            }
+        }
+        else
+            abort();
     }
     void appendingIndex::appendUint64Index(appendingIndex * index,DATABASE_INCREASE::DMLRecord * r,uint64_t id)
     {
         KeyTemplate<uint64_t> c;
-        c.key = *(uint64_t*)r->newColumns[index->m_columnIdxs[0]];
-        appendIndex(index,r,&c,id);
+        if(r->head->type == DATABASE_INCREASE::INSERT)
+        {
+            c.key = *(uint64_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::DELETE)
+        {
+            c.key = *(uint64_t*)r->oldColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::UPDATE||r->head->type == DATABASE_INCREASE::REPLACE)
+        {
+            c.key = *(uint64_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+            if(r->isKeyUpdated(index->m_columnIdxs,index->m_columnCount))
+            {
+                c.key = *(uint64_t*)r->oldColumnOfUpdateType(index->m_columnIdxs[0]);
+                appendIndex(index,r,&c,id,true);
+            }
+        }
+        else
+            abort();
     }
     void appendingIndex::appendInt64Index(appendingIndex * index,DATABASE_INCREASE::DMLRecord * r,uint64_t id)
     {
         KeyTemplate<int64_t> c;
-        c.key = *(int64_t*)r->newColumns[index->m_columnIdxs[0]];
-        appendIndex(index,r,&c,id);
+        if(r->head->type == DATABASE_INCREASE::INSERT)
+        {
+            c.key = *(int64_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::DELETE)
+        {
+            c.key = *(int64_t*)r->oldColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::UPDATE||r->head->type == DATABASE_INCREASE::REPLACE)
+        {
+            c.key = *(int64_t*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+            if(r->isKeyUpdated(index->m_columnIdxs,index->m_columnCount))
+            {
+                c.key = *(int64_t*)r->oldColumnOfUpdateType(index->m_columnIdxs[0]);
+                appendIndex(index,r,&c,id,true);
+            }
+        }
+        else
+            abort();
     }
     void appendingIndex::appendFloatIndex(appendingIndex * index,DATABASE_INCREASE::DMLRecord * r,uint64_t id)
     {
         KeyTemplate<float> c;
-        c.key = *(float*)r->newColumns[index->m_columnIdxs[0]];
-        appendIndex(index,r,&c,id);
+        if(r->head->type == DATABASE_INCREASE::INSERT)
+        {
+            c.key = *(float*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::DELETE)
+        {
+            c.key = *(float*)r->oldColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::UPDATE||r->head->type == DATABASE_INCREASE::REPLACE)
+        {
+            c.key = *(float*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+            if(r->isKeyUpdated(index->m_columnIdxs,index->m_columnCount))
+            {
+                c.key = *(float*)r->oldColumnOfUpdateType(index->m_columnIdxs[0]);
+                appendIndex(index,r,&c,id,true);
+            }
+        }
+        else
+            abort();
     }
     void appendingIndex::appendDoubleIndex(appendingIndex * index,DATABASE_INCREASE::DMLRecord * r,uint64_t id)
     {
         KeyTemplate<double> c;
-        c.key = *(double*)r->newColumns[index->m_columnIdxs[0]];
-        appendIndex(index,r,&c,id);
+        if(r->head->type == DATABASE_INCREASE::INSERT)
+        {
+            c.key = *(double*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::DELETE)
+        {
+            c.key = *(double*)r->oldColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::UPDATE||r->head->type == DATABASE_INCREASE::REPLACE)
+        {
+            c.key = *(double*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+            if(r->isKeyUpdated(index->m_columnIdxs,index->m_columnCount))
+            {
+                c.key = *(double*)r->oldColumnOfUpdateType(index->m_columnIdxs[0]);
+                appendIndex(index,r,&c,id,true);
+            }
+        }
+        else
+            abort();
     }
     void appendingIndex::appendBinaryIndex(appendingIndex * index,DATABASE_INCREASE::DMLRecord * r,uint64_t id)
     {
         KeyTemplate<binaryType> c;
-        c.key.data = (char*)r->newColumns[index->m_columnIdxs[0]];
-        c.key.size = r->newColumnSizes[index->m_columnIdxs[0]];
-        appendIndex(index,r,&c,id);
+
+        if(r->head->type == DATABASE_INCREASE::INSERT)
+        {
+            c.key.data = (char*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::DELETE)
+        {
+            c.key.data = (char*)r->oldColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::UPDATE||r->head->type == DATABASE_INCREASE::REPLACE)
+        {
+            c.key.data = (char*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+            if(r->isKeyUpdated(index->m_columnIdxs,index->m_columnCount))
+            {
+                c.key.data = (char*)r->oldColumnOfUpdateType(index->m_columnIdxs[0]);
+                appendIndex(index,r,&c,id,true);
+            }
+        }
+        else
+            abort();
     }
+    void appendingIndex::appendUnionIndex(appendingIndex * index,DATABASE_INCREASE::DMLRecord * r,uint64_t id)
+    {
+        KeyTemplate<unionKey> c;
+        if(r->head->type == DATABASE_INCREASE::INSERT)
+        {
+            const char * k = unionKey::initKey(index->m_arena)
+            c.key.key = (char*)r->newColumns[index->m_columnIdxs[0]];
+            c.key.meta = r->newColumnSizes[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::DELETE)
+        {
+            c.key = *(float*)r->oldColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+        }
+        else if(r->head->type == DATABASE_INCREASE::UPDATE||r->head->type == DATABASE_INCREASE::REPLACE)
+        {
+            c.key = *(float*)r->newColumns[index->m_columnIdxs[0]];
+            appendIndex(index,r,&c,id,false);
+            if(r->isKeyUpdated(index->m_columnIdxs,index->m_columnCount))
+            {
+                c.key = *(float*)r->oldColumnOfUpdateType(index->m_columnIdxs[0]);
+                appendIndex(index,r,&c,id,true);
+            }
+        }
+        else
+            abort();
+    }
+
     appendingIndex::appendingIndex(uint16_t *columnIdxs,uint16_t columnCount,tableMeta * meta,leveldb::Arena *arena ):m_columnIdxs(columnIdxs),m_columnCount(columnCount),m_meta(meta),m_arena(arena),m_localArena(arena!=nullptr)
     {
         if(m_arena == nullptr)
@@ -263,27 +509,9 @@ namespace STORE{
     }
     typename appendingIndex::appendIndexFunc appendingIndex::m_appendIndexFuncs[] = {appendUint8Index,appendInt8Index,appendUint16Index,appendInt16Index,appendUint32Index,appendInt32Index,appendUint64Index,appendInt64Index,appendFloatIndex,appendDoubleIndex,appendBinaryIndex};
 
-    int  appendingIndex::append(DATABASE_INCREASE::DMLRecord  * r,uint64_t id)
+    void  appendingIndex::append(DATABASE_INCREASE::DMLRecord  * r,uint64_t id)
     {
-        if(r->head->type == DATABASE_INCREASE::UPDATE||r->head->type == DATABASE_INCREASE::REPLACE)
-        {
-           // if(TEST_BITMAP(r->updatedBitmap,m_columnIdxs[0]))
-             //   m_appendIndexFuncs[m_type](this,r,id);
-            m_appendIndexFuncs[m_type](this,r,id);
-        }
-        else if(r->head->type == DATABASE_INCREASE::INSERT)
-        {
-            m_appendIndexFuncs[m_type](this,r,id);
-        }
-        else if(r->head->type == DATABASE_INCREASE::DELETE)
-        {
-            m_appendIndexFuncs[m_type](this,r,id);
-        }
-        else
-        {
-            return -1;
-        }
-        return 0;
+        m_appendIndexFuncs[m_type](this,r,id);
     }
 }
 
