@@ -8,7 +8,7 @@
 			"C":[
 			{"K":"_S_:BIT","F":"bitType"},
 			{"OPT":true,"C":[
-				{"K":"_C_:("},
+				{"K":"_C_:("}, 
 				{"K":"_NUM_","F":"bitTypeSize"},
 				{"K":"_C_:)"}
 			]}
