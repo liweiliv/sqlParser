@@ -12,7 +12,20 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdint.h>
-static inline int64_t fileRead(int fd, unsigned char *buf, uint64_t count)
+#define fileHandle int
+static fileHandle openFile(const char *file, bool read, bool write, bool create)
+{
+	int fd = 0;
+	int flag = 0;
+	if (read)
+		flag |= O_READ;
+	if (write)
+		flag |= O_WRITE;
+	if (create)
+		flag |= O_CREAT;
+	return (fd = open(file, flag, create ? S_IRUSR | S_IWUSR | S_IRGRP : 0));
+}
+static inline int64_t readFile(fileHandle fd, char *buf, uint64_t count)
 {
     uint64_t readbytes, save_count=0;
     for (;;)
@@ -39,7 +52,7 @@ static inline int64_t fileRead(int fd, unsigned char *buf, uint64_t count)
     }
     return save_count;
 }
-static inline  int64_t fileWrite(int fd,unsigned char *buf, size_t count)
+static inline  int64_t writeFile(fileHandle fd,char *buf, size_t count)
 {
     uint64_t writebytes, save_count=0;
     for (;;)
@@ -65,6 +78,14 @@ static inline  int64_t fileWrite(int fd,unsigned char *buf, size_t count)
     }
     return save_count;
 }
+static int truncateFile(fileHandle fd, uint64_t offset)
+{
+	return ftruncate(fd, offset);
+}
+static int closeFile(fileHandle fd)
+{
+	return close(fd);
+}
 /*
  * -1 文件存在
  * 0 文件不存在
@@ -72,7 +93,7 @@ static inline  int64_t fileWrite(int fd,unsigned char *buf, size_t count)
  */
 static inline  int checkFileExist(const char *filename)
 {
-   int fd=open(filename,O_RDONLY);
+	fileHandle fd=open(filename,O_RDONLY);
    if(fd>0)
    {
        close(fd);
