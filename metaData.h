@@ -14,6 +14,8 @@
 #include <list>
 #include <assert.h>
 #include "mysqlTypes.h"
+#include "message/record.h"
+#include "charset.h"
 struct stringArray
 {
     char ** m_array;
@@ -68,12 +70,12 @@ struct stringArray
 };
 struct columnMeta
 {
-    uint8_t m_columnType;
-    uint16_t m_columnIndex;
+    uint8_t m_columnType; //type in DBStream
+	uint8_t m_srcColumnType;// type in database
+    uint16_t m_columnIndex;  //column id in table
     std::string m_columnName;
-    std::string m_charset;
+    const charsetInfo* m_charset;
     uint32_t m_size;
-    uint32_t m_byteSize;
     uint32_t m_precision;
     uint32_t m_decimals;
     stringArray m_setAndEnumValueList;
@@ -81,17 +83,17 @@ struct columnMeta
     bool m_isPrimary;
     bool m_isUnique;
     bool m_generated;
-    columnMeta():m_columnType(0),m_columnIndex(0),m_size(0),m_byteSize(0),m_precision(0),m_decimals(0),
+    columnMeta():m_columnType(0), m_srcColumnType(0),m_columnIndex(0),m_size(0),m_precision(0),m_decimals(0),
             m_setAndEnumValueList(),m_signed(false),m_isPrimary(false),m_isUnique(false),m_generated(false)
     {}
     columnMeta &operator =(const columnMeta &c)
     {
         m_columnType = c.m_columnType;
+		m_srcColumnType = c.m_srcColumnType;
         m_columnIndex = c.m_columnIndex;
         m_columnName = c.m_columnName;
         m_charset = c.m_charset;
         m_size = c.m_size;
-        m_byteSize = c.m_byteSize;
         m_precision = c.m_precision;
         m_decimals =c.m_decimals;
         m_setAndEnumValueList = c.m_setAndEnumValueList;
@@ -106,7 +108,7 @@ struct columnMeta
         std::string sql("`");
         sql.append(m_columnName).append("` ");
         char numBuf[40] = {0};
-        switch(m_columnType)
+        switch(m_srcColumnType)
         {
         case MYSQL_TYPE_DECIMAL:
             sql.append("DECIMAL").append("(");
@@ -199,50 +201,50 @@ struct columnMeta
             break;
         case MYSQL_TYPE_STRING:
             sprintf(numBuf,"%u",m_size);
-            if(m_charset.empty())
+            if(m_charset!=nullptr)
             {
                 sql.append("BINARY").append("(").append(numBuf).append(")");
             }
             else
             {
-                sql.append("CHAR").append("(").append(numBuf).append(") CHARACTER SET ").append(m_charset);
+                sql.append("CHAR").append("(").append(numBuf).append(") CHARACTER SET ").append(m_charset->name);
             }
             break;
         case MYSQL_TYPE_VARCHAR:
-            sql.append("VARCHAR").append("(").append(numBuf).append(") CHARACTER SET ").append(m_charset);
+            sql.append("VARCHAR").append("(").append(numBuf).append(") CHARACTER SET ").append(m_charset->name);
             break;
         case MYSQL_TYPE_VAR_STRING:
             sprintf(numBuf,"%u",m_size);
-            if(m_charset.empty())
+            if(m_charset!=nullptr)
             {
                 sql.append("VARBINARY").append("(").append(numBuf).append(")");
             }
             else
             {
-                sql.append("VARCHAR").append("(").append(numBuf).append(") CHARACTER SET").append(m_charset);
+                sql.append("VARCHAR").append("(").append(numBuf).append(") CHARACTER SET").append(m_charset->name);
             }
             break;
         case MYSQL_TYPE_TINY_BLOB:
-            if(m_charset.empty())
-                sql.append("TINYTEXT").append(" CHARACTER SET ").append(m_charset);
+            if(m_charset!=nullptr)
+                sql.append("TINYTEXT").append(" CHARACTER SET ").append(m_charset->name);
             else
                 sql.append("TINYBLOB");
             break;
         case MYSQL_TYPE_MEDIUM_BLOB:
-            if(m_charset.empty())
-                sql.append("MEDIUMTEXT").append(" CHARACTER SET ").append(m_charset);
+            if(m_charset!=nullptr)
+                sql.append("MEDIUMTEXT").append(" CHARACTER SET ").append(m_charset->name);
             else
                 sql.append("MEDIUMBLOB");
             break;
         case MYSQL_TYPE_BLOB:
-            if(m_charset.empty())
-                sql.append("TEXT").append(" CHARACTER SET ").append(m_charset);
+            if(m_charset!=nullptr)
+                sql.append("TEXT").append(" CHARACTER SET ").append(m_charset->name);
             else
                 sql.append("BLOB");
             break;
         case MYSQL_TYPE_LONG_BLOB:
-            if(m_charset.empty())
-                sql.append("LONGTEXT").append(" CHARACTER SET ").append(m_charset);
+            if(m_charset!=nullptr)
+                sql.append("LONGTEXT").append(" CHARACTER SET ").append(m_charset->name);
             else
                 sql.append("LONGBLOB");
             break;
@@ -255,7 +257,7 @@ struct columnMeta
                     sql.append(",");
                 sql.append("'").append(m_setAndEnumValueList.m_array[idx]).append("'");
             }
-            sql.append(")").append(" CHARACTER SET ").append(m_charset);
+            sql.append(")").append(" CHARACTER SET ").append(m_charset->name);
             break;
         }
         case MYSQL_TYPE_SET:
@@ -267,7 +269,7 @@ struct columnMeta
                     sql.append(",");
                 sql.append("'").append(m_setAndEnumValueList.m_array[idx]).append("'");
             }
-            sql.append(")").append(" CHARACTER SET ").append(m_charset);
+            sql.append(")").append(" CHARACTER SET ").append(m_charset->name);
             break;
         }
         case MYSQL_TYPE_GEOMETRY:
@@ -282,40 +284,147 @@ struct columnMeta
         return sql;
     }
 };
-struct indexMeta
+struct keyInfo
 {
-    stringArray columns;
     std::string name;
+	uint16_t count;
+	uint16_t *keyIndexs;
+	keyInfo() :count(0), keyIndexs(nullptr) {}
+	keyInfo(const keyInfo & key) :name(key.name), count(key.count), keyIndexs(nullptr){
+		if (count > 0)
+		{
+			keyIndexs = new uint16_t[count];
+			memcpy(keyIndexs, key.keyIndexs, sizeof(uint16_t)*count);
+		}
+	}
+	void init(const char* name, uint16_t count, const uint16_t *keyIndexs)
+	{
+		this->count = count;
+		this->name = name;
+		if (count > 0)
+		{
+			this->keyIndexs = new uint16_t[count];
+			memcpy(this->keyIndexs, keyIndexs, sizeof(uint16_t)*count);
+		}
+		else
+			this->keyIndexs = nullptr;
+	}
+	keyInfo& operator =(const keyInfo &key)
+	{
+		name = key.name;
+		count = key.count;
+		if (count > 0)
+		{
+			keyIndexs = new uint16_t[count];
+			memcpy(keyIndexs, key.keyIndexs, sizeof(uint16_t)*count);
+		}
+		else
+			keyIndexs = nullptr;
+		return *this;
+	}
+	void clean()
+	{
+		if (keyIndexs)
+		{
+			delete[]keyIndexs;
+			keyIndexs = nullptr;
+		}
+		count = 0;
+	}
+	~keyInfo()
+	{
+		clean();
+	}
 };
 struct tableMeta
 {
+	std::string  m_dbName;
     std::string  m_tableName;
-    std::string  m_charset;
+    const charsetInfo *m_charset;
     columnMeta * m_columns;
     uint32_t m_columnsCount;
     uint64_t m_id;
-    stringArray m_primaryKey;
-    uint16_t * m_primaryKeyIdxs;
-    indexMeta * m_uniqueKeys;
+	keyInfo m_primaryKey;
     uint16_t m_uniqueKeysCount;
-    uint16_t ** m_uniqueKeyIdxs;
+	keyInfo * m_uniqueKeys;
+	uint16_t m_indexCount;
+	keyInfo * m_indexs;
     static inline uint16_t tableVersion(uint64_t tableIDInfo)
     {
         return tableIDInfo&0xffff;
     }
-    static inline int64_t tableID (uint64_t tableIDInfo)
+    static inline uint64_t tableID (uint64_t tableIDInfo)
     {
         return tableIDInfo&0xffffffffffff0000ul;
     }
-    tableMeta():m_columns(NULL),m_columnsCount(0),m_id(0),m_primaryKeyIdxs(nullptr),m_uniqueKeys(nullptr),m_uniqueKeysCount(0),m_uniqueKeyIdxs(nullptr)
+    tableMeta():m_columns(NULL),m_columnsCount(0),m_id(0),m_uniqueKeysCount(0), m_uniqueKeys(nullptr), m_indexCount(0), m_indexs(nullptr)
     {
     }
+	tableMeta(DATABASE_INCREASE::TableMetaMessage * msg):m_dbName(msg->database? msg->database:""),m_tableName(msg->table?msg->table:""), m_charset(&charsets[msg->metaHead.charsetId]), m_columnsCount(msg->metaHead.columnCount),
+		m_id(msg->metaHead.tableMetaID), m_uniqueKeysCount(msg->metaHead.uniqueKeyCount)
+	{
+		m_columns = new columnMeta[m_columnsCount];
+		for (uint32_t i = 0; i < m_columnsCount; i++)
+		{
+			m_columns[i].m_columnIndex = i;
+			m_columns[i].m_columnName = msg->columnName(i);
+			if (msg->columns[i].charsetID < charsetCount)
+				m_columns[i].m_charset = &charsets[msg->columns[i].charsetID];
+			else
+				m_columns[i].m_charset = nullptr;
+			m_columns[i].m_columnType = msg->columns[i].type;
+			m_columns[i].m_srcColumnType = msg->columns[i].srcType;
+			m_columns[i].m_decimals = msg->columns[i].decimals;
+			m_columns[i].m_precision = msg->columns[i].precision;
+			m_columns[i].m_generated = msg->columns[i].flag&COLUMN_FLAG_VIRTUAL;
+			m_columns[i].m_signed = msg->columns[i].flag&COLUMN_FLAG_SIGNED;
+			m_columns[i].m_size = msg->columns[i].size;
+			if (msg->columns[i].setOrEnumInfoOffset != 0)
+			{
+				const char * base;
+				uint16_t *valueList, valueListSize;
+				msg->setOrEnumValues(i, base, valueList, valueListSize);
+				m_columns[i].m_setAndEnumValueList.m_Count = valueListSize;
+				m_columns[i].m_setAndEnumValueList.m_array = (char**)malloc(sizeof(char*)*valueListSize);
+				for (uint16_t j = 0; j < valueListSize; j++)
+				{
+					m_columns[i].m_setAndEnumValueList.m_array[j] = (char*)malloc(valueList[j + 1] - valueList[j]);
+					memcpy(m_columns[i].m_setAndEnumValueList.m_array[j], base + valueList[j], valueList[j + 1] - valueList[j]);
+				}
+			}
+			m_columns[i].m_isPrimary = false;
+			m_columns[i].m_isUnique = false;
+		}
+		if (msg->metaHead.primaryKeyColumnCount > 0)
+		{
+			m_primaryKey.init("primary key", msg->metaHead.primaryKeyColumnCount, msg->primaryKeys);
+			for (uint16_t i = 0; i < m_primaryKey.count; i++)
+				getColumn(m_primaryKey.keyIndexs[i])->m_isPrimary = true;
+		}
+		if (msg->metaHead.uniqueKeyCount > 0)
+		{
+			m_uniqueKeys = new keyInfo[msg->metaHead.uniqueKeyCount];
+			for (uint16_t i = 0; i < msg->metaHead.uniqueKeyCount; i++)
+			{
+				m_uniqueKeys[i].init(msg->data + msg->uniqueKeyNameOffset[i], msg->uniqueKeyColumnCounts[i], msg->uniqueKeys[i]);
+				for (uint16_t j = 0; j < m_uniqueKeys[i].count; j++)
+					getColumn(m_uniqueKeys[i].keyIndexs[j])->m_isUnique = true;
+			}
+			m_uniqueKeysCount = msg->metaHead.uniqueKeyCount;
+		}
+	}
+	const char * createTableMetaRecord()
+	{
+
+	}
     ~tableMeta()
     {
         if(m_columns)
             delete []m_columns;
-        if(m_uniqueKeysCount)
-            delete []m_uniqueKeys;
+		if (m_uniqueKeys !=nullptr)
+			delete[]m_uniqueKeys;
+		if (m_indexs != nullptr)
+			delete[]m_indexs;
     }
     tableMeta &operator =(const tableMeta &t)
     {
@@ -331,50 +440,30 @@ struct tableMeta
             m_columns = NULL;
         m_id = t.m_id;
         /*copy primary key*/
-        m_primaryKey = t.m_primaryKey;
-        if(m_primaryKeyIdxs!=nullptr)
-        {
-            delete []m_primaryKeyIdxs;
-            m_primaryKeyIdxs = nullptr;
-        }
-        if(m_primaryKey.m_Count>0)
-        {
-            m_primaryKeyIdxs = new uint16_t[m_primaryKey.m_Count];
-            memcpy(m_primaryKeyIdxs,t.m_primaryKeyIdxs,sizeof(uint16_t)*m_primaryKey.m_Count);
-        }
+		m_primaryKey = t.m_primaryKey;
         /*copy unique key*/
-        if(m_uniqueKeyIdxs!=nullptr)
+		m_uniqueKeysCount = t.m_uniqueKeysCount;
+        if(t.m_uniqueKeys!=nullptr)
         {
+			m_uniqueKeys = new keyInfo[m_uniqueKeysCount];
             for(int i =0 ;i<m_uniqueKeysCount;i++)
-            {
-                if(m_uniqueKeyIdxs[i]!=nullptr)
-                    delete []m_uniqueKeyIdxs[i];
-            }
-            delete  []m_uniqueKeyIdxs;
-            m_uniqueKeyIdxs = nullptr;
+				m_uniqueKeys[i] = t.m_uniqueKeys[i];
         }
-
-        if((m_uniqueKeysCount=t.m_uniqueKeysCount)>0)
-        {
-            m_uniqueKeyIdxs = new uint16_t*[m_uniqueKeysCount];
-            m_uniqueKeys = new indexMeta[m_uniqueKeysCount];
-            for(int i =0 ;i<m_uniqueKeysCount;i++)
-            {
-                if(t.m_uniqueKeyIdxs[i]!=nullptr)
-                {
-                    m_uniqueKeyIdxs[i] = new uint16_t[t.m_uniqueKeys[i].columns.m_Count];
-                    memcpy(m_uniqueKeyIdxs[i],t.m_uniqueKeyIdxs[i],sizeof(uint16_t)*t.m_uniqueKeys[i].columns.m_Count);
-                }
-                else
-                    m_uniqueKeyIdxs[i] = nullptr;
-                m_uniqueKeys[i].columns = t.m_uniqueKeys[i].columns;
-                m_uniqueKeys[i].name = t.m_uniqueKeys[i].name;
-            }
-        }
-        else
-            m_uniqueKeys = nullptr;
+		m_indexCount = t.m_indexCount;
+		if (t.m_indexs != nullptr)
+		{
+			m_indexs = new keyInfo[m_indexCount];
+			for (int i = 0; i < m_indexCount; i++)
+				m_indexs[i] = t.m_indexs[i];
+		}
         return *this;
     }
+	inline columnMeta *getColumn(uint16_t idx)
+	{
+		if (idx > m_columnsCount)
+			return nullptr;
+		return &m_columns[idx];
+	}
     columnMeta * getColumn(const char * columnName)
     {
         for(uint32_t i=0;i<m_columnsCount;i++)
@@ -384,7 +473,7 @@ struct tableMeta
         }
         return NULL;
     }
-    indexMeta *getUniqueKey(const char *UniqueKeyname)
+    keyInfo *getUniqueKey(const char *UniqueKeyname)
     {
         for(uint16_t i=0;i<m_uniqueKeysCount;i++)
         {
@@ -405,25 +494,42 @@ struct tableMeta
             columns[idx-1]=m_columns[idx];
             columns[idx-1].m_columnIndex--;
         }
-        if(m_uniqueKeyIdxs!=nullptr)
+        if(m_uniqueKeys !=nullptr)
         {
             for(uint16_t idx = 0;idx<m_uniqueKeysCount;idx++)
             {
-                for(uint16_t i = 0;i<m_uniqueKeys[idx].columns.m_Count;i++)
+                for(uint16_t i = 0;i<m_uniqueKeys[idx].count;)
                 {
-                    if(m_uniqueKeyIdxs[idx][i]>columnIndex)
-                        m_uniqueKeyIdxs[idx][i]--;
+                    if(m_uniqueKeys[idx].keyIndexs[i]>columnIndex)
+						m_uniqueKeys[idx].keyIndexs[i]--;
+					else if (m_uniqueKeys[idx].keyIndexs[i] == columnIndex)
+					{
+						memcpy(&m_uniqueKeys[idx].keyIndexs[i], &m_uniqueKeys[idx].keyIndexs[i + 1], sizeof(uint16_t)*(m_uniqueKeys[idx].count - i - 1));
+						m_uniqueKeys[idx].count--;
+						continue;//do not do [i++]
+					}
+					i++;
                 }
+				if (m_uniqueKeys[idx].count == 0)
+				{
+					dropUniqueKey(m_uniqueKeys[idx].name.c_str());
+				}
             }
         }
-        if(m_primaryKeyIdxs!=nullptr)
-        {
-            for(uint16_t i = 0;i<m_primaryKey.m_Count;i++)
-            {
-                if(m_primaryKeyIdxs[i]>columnIndex)
-                    m_primaryKeyIdxs[i]--;
-            }
-        }
+		for (uint16_t i = 0; i < m_primaryKey.count;)
+		{
+			if (m_primaryKey.keyIndexs[i] > columnIndex)
+				m_primaryKey.keyIndexs[i]--;
+			else if (m_primaryKey.keyIndexs[i] == columnIndex)
+			{
+				memcpy(&m_primaryKey.keyIndexs[i], &m_primaryKey.keyIndexs[i + 1], sizeof(uint16_t)*(m_primaryKey.count - i - 1));
+				m_primaryKey.count--;
+				continue;//do not do [i++]
+			}
+			i++;
+		}
+		if (m_primaryKey.count == 0)
+			dropPrimaryKey();
         delete []m_columns;
         m_columns = columns;
         m_columnsCount--;
@@ -455,23 +561,23 @@ struct tableMeta
                 columns[idx]=m_columns[idx-1];
                 columns->m_columnIndex++;
             }
-            if(m_uniqueKeyIdxs!=nullptr)
+            if(m_uniqueKeys!=nullptr)
             {
                 for(uint16_t idx = 0;idx<m_uniqueKeysCount;idx++)
                 {
-                    for(uint16_t i = 0;i<m_uniqueKeys[idx].columns.m_Count;i++)
+                    for(uint16_t i = 0;i<m_uniqueKeys[idx].count;i++)
                     {
-                        if(m_uniqueKeyIdxs[idx][i]>before->m_columnIndex)
-                            m_uniqueKeyIdxs[idx][i]++;
+                        if(m_uniqueKeys[idx].keyIndexs[i]>before->m_columnIndex)
+							m_uniqueKeys[idx].keyIndexs[i]++;
                     }
                 }
             }
-            if(m_primaryKeyIdxs!=nullptr)
+            if(m_primaryKey.count>0)
             {
-                for(uint16_t i = 0;i<m_primaryKey.m_Count;i++)
+                for(uint16_t i = 0;i< m_primaryKey.count;i++)
                 {
-                    if(m_primaryKeyIdxs[i]>before->m_columnIndex)
-                        m_primaryKeyIdxs[i]++;
+                    if(m_primaryKey.keyIndexs[i]>before->m_columnIndex)
+						m_primaryKey.keyIndexs[i]++;
                 }
             }
         }
@@ -488,37 +594,29 @@ struct tableMeta
     }
     int dropPrimaryKey()
     {
-        if(m_primaryKey.m_Count==0)
-            return -1;
-        for(uint32_t idx = 0;idx<m_primaryKey.m_Count;idx++)
-        {
-            columnMeta * c = getColumn(m_primaryKey.m_array[idx]);
-            assert(c != NULL);
-            c->m_isPrimary = false;
-        }
-        m_primaryKey.clean();
-        delete [] m_primaryKeyIdxs ;
-        m_primaryKeyIdxs = nullptr;
-        return 0;
+		for(uint16_t i=0;i< m_primaryKey.count;i++)
+			getColumn(m_primaryKey.keyIndexs[i])->m_isPrimary = false;
+		m_primaryKey.clean();
+		return 0;
     }
     int createPrimaryKey(const std::list<std::string> &columns)
     {
-        if(m_primaryKey.m_Count!=0)
+        if(m_primaryKey.count !=0)
             return -1;
-        m_primaryKey = columns;
-        m_primaryKeyIdxs = new uint16_t[m_primaryKey.m_Count];
-        for(uint32_t idx = 0;idx<m_primaryKey.m_Count;idx++)
+		m_primaryKey.clean();
+		m_primaryKey.name = "primary key";
+		m_primaryKey.keyIndexs = new uint16_t[ columns.size()];
+        for(std::list<std::string>::const_iterator iter= columns.begin();iter!= columns.end();iter++)
         {
-            columnMeta * c = getColumn(m_primaryKey.m_array[idx]);
+            columnMeta * c = getColumn((*iter).c_str());
             if(c == NULL)
             {
-                m_primaryKey.clean();
+				m_primaryKey.clean();
                 return -1;
             }
             c->m_isPrimary = true;
-            m_primaryKeyIdxs[idx] = c->m_columnIndex;
+			m_primaryKey.keyIndexs[m_primaryKey.count++] = c->m_columnIndex;
         }
-
         return 0;
     }
     int dropUniqueKey(const char *ukName)
@@ -530,46 +628,31 @@ struct tableMeta
                 goto DROP;
         }
         return -1;
-DROP:
-        /*copy data*/
-        if(m_uniqueKeyIdxs[idx]!=nullptr)
-        {
-            delete []m_uniqueKeyIdxs[idx];
-            m_uniqueKeyIdxs[idx] = nullptr;
-        }
-        for(int i=idx;i<m_uniqueKeysCount-1;i++)
-            m_uniqueKeyIdxs[i] = m_uniqueKeyIdxs[i+1];
-        m_uniqueKeyIdxs[m_uniqueKeysCount-1] = nullptr;
-        indexMeta * newIndex = new indexMeta[m_uniqueKeysCount-1];
-        for(int i=0;i<idx;i++)
-        {
-            newIndex[i].name = m_uniqueKeys[i].name;
-            newIndex[i].columns = m_uniqueKeys[i].columns;
-        }
-        for(uint16_t i=idx+1;i<m_uniqueKeysCount;i++)
-        {
-            newIndex[i-1].name = m_uniqueKeys[i].name;
-            newIndex[i-1].columns = m_uniqueKeys[i].columns;
-        }
-        indexMeta * oldUK = m_uniqueKeys;
-        m_uniqueKeys = newIndex;
-        m_uniqueKeysCount--;
+	DROP:
+		keyInfo * newUks = new keyInfo[m_uniqueKeysCount - 1];
+		for (int i = 0; i < idx; i++)
+			newUks[i] = m_uniqueKeys[i];
+		for (int i = idx+1; i < m_uniqueKeysCount - 1; i++)
+			newUks[i-1] = m_uniqueKeys[i];
 
         /*update columns */
-        for(uint32_t i = 0;i<oldUK[idx].columns.m_Count;i++)
+        for(uint16_t i = 0;i< m_uniqueKeys[idx].count;i++)
         {
-            for(uint16_t j =0;j<m_uniqueKeysCount;j++)
+            for(uint16_t j =0;j<m_uniqueKeysCount-1;j++)
             {
-                for(uint32_t k = 0;k<m_uniqueKeys[j].columns.m_Count;k++)
+                for(uint32_t k = 0;k<newUks[j].count;k++)
                 {
-                    if(strcmp(m_uniqueKeys[j].columns.m_array[k],oldUK[idx].columns.m_array[i])==0)
+					if(m_uniqueKeys[idx].keyIndexs[i] == newUks[j].keyIndexs[k])
                         goto COLUMN_IS_STILL_UK;
                 }
             }
-            getColumn(oldUK[idx].columns.m_array[i])->m_isUnique = false;
+            getColumn(m_uniqueKeys[idx].keyIndexs[i])->m_isUnique = false;
 COLUMN_IS_STILL_UK:
-        continue;
+			continue;
         }
+		delete[]m_uniqueKeys;
+		m_uniqueKeys = newUks;
+		m_uniqueKeysCount--;
         return 0;
     }
     int addUniqueKey(const char *ukName,const std::list<std::string> &columns)
@@ -577,37 +660,27 @@ COLUMN_IS_STILL_UK:
         if(getUniqueKey(ukName)!=NULL)
             return -1;
         /*copy data*/
-        uint16_t ** newUkIdxs = new uint16_t*[m_uniqueKeysCount+1];
-        for(int i=0;i<m_uniqueKeysCount;i++)
-            newUkIdxs[i] = m_uniqueKeyIdxs[i];
-        indexMeta * newIndex = new indexMeta[m_uniqueKeysCount+1];
-        for(int i=0;i<m_uniqueKeysCount;i++)
-        {
-            newIndex[i].name = m_uniqueKeys[i].name;
-            newIndex[i].columns = m_uniqueKeys[i].columns;
-        }
-        newIndex[m_uniqueKeysCount].columns = columns;
-        newIndex[m_uniqueKeysCount].name = ukName;
-        newUkIdxs[m_uniqueKeysCount] = new uint16_t[newIndex[m_uniqueKeysCount].columns.m_Count];
-        for(uint32_t i = 0;i<newIndex[m_uniqueKeysCount].columns.m_Count;i++)
-        {
-            columnMeta * column = getColumn(newIndex[m_uniqueKeysCount].columns.m_array[i]);
-            if(column == NULL)
-            {
-                delete []newIndex;
-                delete []newUkIdxs[m_uniqueKeysCount];
-                delete []newUkIdxs;
-                return -1;
-            }
-            newUkIdxs[m_uniqueKeysCount][i] = column->m_columnIndex;
-            column->m_isUnique = true;
-        }
-        delete [] m_uniqueKeys;
-        m_uniqueKeys = newIndex;
-        delete [] m_uniqueKeyIdxs;
-        m_uniqueKeyIdxs = newUkIdxs;
-        m_uniqueKeysCount++;
-        return 0;
+		keyInfo * newUks = new keyInfo[m_uniqueKeysCount - 1];
+		newUks[m_uniqueKeysCount].keyIndexs = new uint16_t[columns.size()];
+		newUks[m_uniqueKeysCount].name = ukName;
+		for (std::list<std::string>::const_iterator iter = columns.begin(); iter != columns.end(); iter++)
+		{
+			columnMeta * column = getColumn((*iter).c_str());
+			if (column == nullptr)
+			{
+				delete[]newUks;
+				return -1;
+			}
+			newUks[m_uniqueKeysCount].keyIndexs[newUks[m_uniqueKeysCount].count++] = column->m_columnIndex;
+			if (!column->m_isUnique)
+				column->m_isUnique = true;
+		}
+		for (int i = 0; i < m_uniqueKeysCount; i++)
+			newUks[i] = m_uniqueKeys[i];
+		delete []m_uniqueKeys;
+		m_uniqueKeys = newUks;
+		m_uniqueKeysCount++;
+		return 0;
     }
     std::string toString()
     {
@@ -619,15 +692,15 @@ COLUMN_IS_STILL_UK:
                 sql.append(",\n");
             sql.append(m_columns[idx].toString());
         }
-        if(m_primaryKey.m_Count>0)
+        if(m_primaryKey.count >0)
         {
             sql.append(",\n");
             sql.append("PRIMARY KEY (");
-            for(uint32_t idx =0 ;idx<m_primaryKey.m_Count;idx++)
+            for(uint32_t idx =0 ;idx< m_primaryKey.count;idx++)
             {
                 if(idx>0)
                     sql.append(",");
-                sql.append("`").append(m_primaryKey.m_array[idx]).append("`");
+                sql.append("`").append(getColumn(m_primaryKey.keyIndexs[idx])->m_columnName).append("`");
             }
             sql.append(")");
         }
@@ -637,16 +710,16 @@ COLUMN_IS_STILL_UK:
             {
                 sql.append(",\n");
                 sql.append("UNIQUE KEY `").append(m_uniqueKeys[idx].name).append("` (");
-                for(uint32_t j =0 ;j<m_uniqueKeys[idx].columns.m_Count;j++)
+                for(uint32_t j =0 ;j<m_uniqueKeys[idx].count;j++)
                 {
                     if(j>0)
                         sql.append(",");
-                    sql.append("`").append(m_uniqueKeys[idx].columns.m_array[j]).append("`");
+                    sql.append("`").append(getColumn(m_uniqueKeys[idx].keyIndexs[j])->m_columnName).append("`");
                 }
                 sql.append(")");
             }
         }
-        sql.append(".\n) ").append("CHARACTER SET").append(m_charset).append(";");
+        sql.append(".\n) ").append("CHARACTER SET").append(m_charset->name).append(";");
         return sql;
     }
 };
