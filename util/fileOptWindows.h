@@ -1,4 +1,5 @@
 #pragma once
+#ifdef OS_WIN
 #include <windows.h>
 #include <stdint.h>
 #define fileHandle HANDLE 
@@ -105,3 +106,4 @@ static int fsync(fileHandle fd)
 {
 	return FlushFileBuffers(fd);
 }
+#endif

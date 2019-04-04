@@ -6,7 +6,6 @@
  */
 #include <atomic>
 #include <time.h>
-#define OS_WIN  //todo
 #include "../util/file.h"
 #include "../util/skiplist.h"
 #include "../metaDataCollection.h"

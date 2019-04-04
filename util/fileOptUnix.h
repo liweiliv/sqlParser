@@ -7,6 +7,7 @@
 
 #ifndef FILEOPT_H_
 #define FILEOPT_H_
+#ifdef OS_LINUX
 #include <errno.h>
 #include <error.h>
 #include <fcntl.h>
@@ -18,9 +19,9 @@ static fileHandle openFile(const char *file, bool read, bool write, bool create)
 	int fd = 0;
 	int flag = 0;
 	if (read)
-		flag |= O_READ;
+		flag |= O_RDONLY;
 	if (write)
-		flag |= O_WRITE;
+		flag |= O_WRONLY;
 	if (create)
 		flag |= O_CREAT;
 	return (fd = open(file, flag, create ? S_IRUSR | S_IWUSR | S_IRGRP : 0));
@@ -52,7 +53,7 @@ static inline int64_t readFile(fileHandle fd, char *buf, uint64_t count)
     }
     return save_count;
 }
-static inline  int64_t writeFile(fileHandle fd,char *buf, size_t count)
+static inline  int64_t writeFile(fileHandle fd,const char *buf, size_t count)
 {
     uint64_t writebytes, save_count=0;
     for (;;)
@@ -86,6 +87,10 @@ static int closeFile(fileHandle fd)
 {
 	return close(fd);
 }
+static int64_t seekFile(fileHandle fd, int64_t position, int seekType)
+{
+    return lseek64(fd,position,seekType);
+}
 /*
  * -1 文件存在
  * 0 文件不存在
@@ -111,4 +116,5 @@ static inline  int checkFileExist(const char *filename)
        }
    }
 }
+#endif
 #endif /* FILEOPT_H_ */
