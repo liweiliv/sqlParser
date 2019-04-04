@@ -8,6 +8,8 @@
 #include "metaDataCollection.h"
 #include "metaData.h"
 #include "sqlParser.h"
+#include "store/client/client.h"
+#include "charset.h"
 #ifndef likely
 # define likely(x)  __builtin_expect(!!(x), 1)
 #endif
@@ -149,53 +151,14 @@ struct dbInfo
 {
     trieTree tables;
     uint64_t m_id;
-    std::string charset;
+    const charsetInfo* charset;
 };
-metaDataCollection::metaDataCollection() :
+metaDataCollection::metaDataCollection(STORE::client *client) :m_allTables(m_cmp, &m_arena),m_client(client),
         m_dbs(),m_maxTableId(0)
 {
     m_SqlParser = new sqlParser::sqlParser();
-    m_charsetSizeList.insert(std::pair<const char*,int>("big5", 2));
-    m_charsetSizeList.insert(std::pair<const char*,int>("dec8", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("cp850", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("hp8",  1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("koi8r",  1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("latin1",  1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("latin2",  1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("swe7",  1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("ascii",  1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("ujis", 3));
-    m_charsetSizeList.insert(std::pair<const char*,int>("sjis",  2));
-    m_charsetSizeList.insert(std::pair<const char*,int>("hebrew", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("tis620", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("euckr",  2));
-    m_charsetSizeList.insert(std::pair<const char*,int>("koi8u", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("gb2312", 2));
-    m_charsetSizeList.insert(std::pair<const char*,int>("greek", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("cp1250", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("gbk", 2));
-    m_charsetSizeList.insert(std::pair<const char*,int>("latin5", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("armscii8", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("utf8", 3));
-    m_charsetSizeList.insert(std::pair<const char*,int>("ucs2", 2));
-    m_charsetSizeList.insert(std::pair<const char*,int>("cp866", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("keybcs2", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("macce", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("macroman", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("cp852", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("latin7", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("utf8mb4", 4));
-    m_charsetSizeList.insert(std::pair<const char*,int>("cp1251", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>("utf16", 4));
-    m_charsetSizeList.insert(std::pair<const char*,int>("utf16le", 4));
-    m_charsetSizeList.insert(std::pair<const char*,int>("cp1256", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>( "cp1257", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>( "utf32", 4));
-    m_charsetSizeList.insert(std::pair<const char*,int>( "binary", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>( "geostd8", 1));
-    m_charsetSizeList.insert(std::pair<const char*,int>( "cp932", 2));
-    m_charsetSizeList.insert(std::pair<const char*,int>( "eucjpms", 3));
-    m_charsetSizeList.insert(std::pair<const char*,int>( "gb18030", 4));
+	for (uint16_t i = 0; i < charsetCount; i++)
+		m_charsetSizeList.insert(std::pair<const char*, const charsetInfo*>(charsets[i].name, &charsets[i]));
 }
 metaDataCollection::~metaDataCollection()
 {
@@ -220,12 +183,35 @@ tableMeta * metaDataCollection::get(const char * database, const char * table,
         return NULL;
     return metas->get(originCheckPoint);
 }
+tableMeta *metaDataCollection::getFromRemote(uint64_t tableID) {
+	const char * metaRecord = nullptr;
+	for (int i=0;i<10&&nullptr == (metaRecord = m_client->askMeta(tableID));i++)
+	{
+		if (m_client->getStatus() == STORE::client::IDLE)
+			return nullptr;
+		else if(m_client->getStatus() == STORE::client::DISCONNECTED)
+			m_client->connect();
+		_sleep(1);
+	}
+	if (metaRecord == nullptr)
+		return nullptr;
+	tableMeta * meta = new tableMeta();
+
+}
 tableMeta *metaDataCollection::get(uint64_t tableID){
     tableMetaWrap t = {tableID,nullptr};
-    leveldb::SkipList<tableMetaWrap*, tableIDComparator>::Iterator iter(m_allTables);
+    leveldb::SkipList<tableMetaWrap*, tableIDComparator>::Iterator iter(&m_allTables);
     iter.Seek(&t);
     if(iter.Valid())
         return iter.key()->meta;
+	if (m_client)
+	{
+		tableMeta * meta = nullptr;
+		if ((meta = getFromRemote(tableID)) == nullptr)
+			return nullptr;
+		else
+			return meta;
+	}
     else
         return nullptr;
 }
@@ -272,7 +258,7 @@ static void copyColumn(columnMeta & column, const newColumnInfo* src)
     column.m_setAndEnumValueList.m_Count = 0;
     column.m_setAndEnumValueList.m_array = (char**) malloc(
             sizeof(char*) * src->setAndEnumValueList.size());
-    for (list<string>::iterator iter = src->setAndEnumValueList.begin();
+    for (list<string>::const_iterator iter = src->setAndEnumValueList.begin();
             iter != src->setAndEnumValueList.end(); iter++)
     {
         column.m_setAndEnumValueList.m_array[column.m_setAndEnumValueList.m_Count] =
@@ -309,7 +295,7 @@ int metaDataCollection::createTable(handle * h, const newTableInfo *t,
     meta->m_columns = new columnMeta[t->newColumns.size()];
     meta->m_tableName = newTable.table;
     meta->m_charset = t->defaultCharset;
-    if (meta->m_charset.empty())
+    if (meta->m_charset == nullptr)
         meta->m_charset = db->charset;
 
     for (list<newColumnInfo*>::const_iterator iter = t->newColumns.begin();
@@ -320,16 +306,9 @@ int metaDataCollection::createTable(handle * h, const newTableInfo *t,
         copyColumn(column, c);
         if (c->isString)
         {
-            if (c->charset.empty())
+            if (c->charset==nullptr)
                 column.m_charset = meta->m_charset;
-            CharsetTree::iterator citer = m_charsetSizeList.find(column.m_charset.c_str());
-            if (citer == m_charsetSizeList.end())
-            {
-                printf("unknown charset %s\n", column.m_charset.c_str());
-                delete meta;
-                return -1;
-            }
-            column.m_size *= citer->second;
+            column.m_size *= column.m_charset->byteSizePerChar;
         }
         meta->m_columnsCount++;
     }
@@ -339,7 +318,7 @@ int metaDataCollection::createTable(handle * h, const newTableInfo *t,
         if ((*iter)->type == newKeyInfo::UNIQUE_KEY)
             ukCount++;
     if (ukCount > 0)
-        meta->m_uniqueKeys = new stringArray[ukCount];
+        meta->m_uniqueKeys = new indexMeta[ukCount];
     for (list<newKeyInfo*>::const_iterator iter = t->newKeys.begin();
             iter != t->newKeys.end(); iter++)
     {
@@ -467,7 +446,7 @@ int metaDataCollection::alterTable(handle * h, const newTableInfo *t,
     tableMeta * newMeta = new tableMeta;
     *newMeta = *meta;
     /*update charset*/
-    if (!t->defaultCharset.empty())
+    if (t->defaultCharset!=nullptr)
         newMeta->m_charset = t->defaultCharset;
     /*update new column*/
     for (list<newColumnInfo*>::const_iterator iter = t->newColumns.begin();
@@ -479,16 +458,9 @@ int metaDataCollection::alterTable(handle * h, const newTableInfo *t,
         /*update default charset and string size*/
         if (c->isString)
         {
-            if (c->charset.empty())
+            if (c->charset == nullptr)
                 column.m_charset = meta->m_charset;
-            CharsetTree::iterator citer = m_charsetSizeList.find(column.m_charset.c_str());
-            if(citer == m_charsetSizeList.end())
-            {
-                printf("unknown charset %s\n", column.m_charset.c_str());
-                delete newMeta;
-                return -1;
-            }
-            column.m_size *= citer->second;
+            column.m_size *= column.m_charset->byteSizePerChar;
         }
         columnMeta * modifiedColumn = meta->getColumn(c->name.c_str());
         if (c->after)
@@ -661,9 +633,9 @@ int metaDataCollection::processDatabase(const databaseInfo * database,
         {
             current = new dbInfo;
             current->charset = database->charset;
-            if (current->charset.empty())
+            if (current->charset == nullptr)
                 current->charset = m_defaultCharset;
-            db = new MetaTimeline<dbInfo>(current, originCheckPoint);
+            db = new MetaTimeline<dbInfo>(originCheckPoint,current);
             __asm__ __volatile__("mfence" ::: "memory");
             if (0
                     != m_dbs.insert(
@@ -685,7 +657,7 @@ int metaDataCollection::processDatabase(const databaseInfo * database,
         {
             current = new dbInfo;
             current->charset = database->charset;
-            if (current->charset.empty())
+            if (current->charset == nullptr)
                 current->charset = m_defaultCharset;
             __asm__ __volatile__("mfence" ::: "memory");
             if (0 != db->put(current, originCheckPoint))
@@ -704,7 +676,7 @@ int metaDataCollection::processDatabase(const databaseInfo * database,
         return -1;
     else if (database->type == databaseInfo::ALTER_DATABASE)
     {
-        if (!database->charset.empty())
+        if (database->charset!=nullptr)
             current->charset = database->charset;
         return 0;
     }
@@ -739,7 +711,7 @@ int metaDataCollection::processDDL(const char * ddl, uint64_t originCheckPoint)
         {
             processNewTable(currentHandle, *iter, originCheckPoint);
         }
-        for (list<Table>::const_iterator iter = meta->oldTables;
+        for (list<Table>::const_iterator iter = meta->oldTables.begin();
                 iter != meta->oldTables.end(); iter++)
         {
             processOldTable(currentHandle, &(*iter), originCheckPoint);
