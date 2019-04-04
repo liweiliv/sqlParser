@@ -1,23 +1,24 @@
 /*
- * appendingBlock.cpp
+ * appendingBlock.h
  *
  *  Created on: 2019年1月7日
  *      Author: liwei
  */
 #include <atomic>
 #include <time.h>
-#include "fileOpt.h"
-#include "skiplist.h"
-#include "metaDataCollection.h"
-#include <unorderMapUtil.h>
-#include "record.h"
+#define OS_WIN  //todo
+#include "../util/file.h"
+#include "../util/skiplist.h"
+#include "../metaDataCollection.h"
+#include "../util/unorderMapUtil.h"
+#include "../message/record.h"
 #include "filter.h"
 #include "iterator.h"
 #include "schedule.h"
 #include "block.h"
 #include <string.h>
 #include <glog/logging.h>
-#include "metaData.h"
+#include "../metaData.h"
 namespace STORE
 {
 
@@ -38,7 +39,7 @@ private:
         {
             if(meta!=nullptr)
             {
-                indexCount = meta->m_uniqueKeysCount+(meta->m_primaryKey.m_array!=nullptr)?1:0;
+                indexCount = meta->m_uniqueKeysCount+(meta->m_primaryKey.count>0)?1:0;
                 indexs = (void**)malloc(sizeof(void*)*indexCount);
             }
         }
@@ -56,8 +57,8 @@ private:
     std::atomic<bool> m_ended;
     std::string m_path;
     appendingBlockStaus m_status;
-    int m_fd;
-    int m_redoFd;
+    fileHandle m_fd;
+    fileHandle m_redoFd;
 
     int32_t m_redoUnflushDataSize;
     int32_t m_redoFlushDataSize;
@@ -66,7 +67,7 @@ private:
 public:
     appendingBlock(uint32_t flag, const char * logDir, const char * logPrefix,
             uint32_t bufSize,int32_t redoFlushDataSize,int32_t redoFlushPeriod,uint64_t startID) :
-                m_startID(startID),m_fd(0),m_endID(startID),m_bufSize(bufSize), m_status(OK), m_redoFd(-1),m_redoUnflushDataSize(0),m_redoFlushDataSize(redoFlushDataSize),
+                m_startID(startID),m_fd(0),m_endID(startID),m_bufSize(bufSize), m_status(OK), m_redoFd(0),m_redoUnflushDataSize(0),m_redoFlushDataSize(redoFlushDataSize),
             m_redoFlushPeriod(redoFlushPeriod)
     {
         char fileName[256];
@@ -78,14 +79,13 @@ public:
     int openRedoFile()
     {
         if (0
-                > (m_redoFd = open((m_path + ".redo").c_str(), O_RDWR | O_CREAT,
-                        S_IRUSR | S_IWUSR | S_IRGRP)))
+                > (m_redoFd = openFile((m_path + ".redo").c_str(),true,true,true)))
         {
             LOG(ERROR)<<"open redo file :"<<m_path<<".redo failed for errno:"<<errno<<",error info:"<<strerror(errno);
             return -1;
         }
         int fileSize;
-        if((fileSize = lseek(m_redoFd,0,SEEK_END))<m_offset.load(std::memory_order_relaxed))
+        if((fileSize = seekFile(m_redoFd,0,SEEK_END))<m_offset.load(std::memory_order_relaxed))
         {
             LOG(ERROR)<<"eopen redo file :"<<m_path<<".redo failed for file size check failed,expect file size:"
             <<m_offset.load(std::memory_order_relaxed)<<",actually is "<<fileSize;
@@ -93,12 +93,12 @@ public:
         }
         if(fileSize!=m_offset.load(std::memory_order_relaxed))
         {
-            if(0!=ftruncate(m_redoFd,m_offset.load(std::memory_order_relaxed)))
+            if(0!=truncateFile(m_redoFd,m_offset.load(std::memory_order_relaxed)))
             {
                 LOG(ERROR)<<"ftruncate redo file :"<<m_path<<".redo to size:"<<m_offset.load(std::memory_order_relaxed)<<"failed for ferrno:"<<errno<<",error info:"<<strerror(errno);
                 return -1;
             }
-            if(lseek(m_redoFd,m_offset.load(std::memory_order_relaxed),SEEK_SET)!=m_offset.load(std::memory_order_relaxed))
+            if(seekFile(m_redoFd,m_offset.load(std::memory_order_relaxed),SEEK_SET)!=m_offset.load(std::memory_order_relaxed))
             {
                 LOG(ERROR)<<"open redo file :"<<m_path<<".redo failed for file size check failed,expect file size:"
                 <<m_offset.load(std::memory_order_relaxed)<<",actually is "<<fileSize;
@@ -110,13 +110,13 @@ public:
     int recoveryFromRedo()
     {
         if (m_redoFd >0)
-            close(m_redoFd);
-        if(0>(m_redoFd = open((m_path+".redo").c_str(),O_RDWR)))
+			closeFile(m_redoFd);
+        if(0>(m_redoFd = openFile((m_path+".redo").c_str(),true,true,false)))
         {
             LOG(ERROR)<<"open redo file :"<<m_path<<".redo failed for errno:"<<errno<<",error info:"<<strerror(errno);
             return -1;
         }
-        int size = lseek(m_redoFd,0,SEEK_END);//get fileSize
+        int size = seekFile(m_redoFd,0,SEEK_END);//get fileSize
         if(size<0)
         {
             LOG(ERROR)<<"get size of  redo file :"<<m_path<<".redo failed for errno:"<<errno<<",error info:"<<strerror(errno);
@@ -130,13 +130,13 @@ public:
             LOG(ERROR)<<"alloc "<<size<<" byte memory failed";
             return -1;
         }
-        if(0!=lseek(m_redoFd,0,SEEK_SET))//seek to begin of file
+        if(0!= seekFile(m_redoFd,0,SEEK_SET))//seek to begin of file
         {
             free(buf);
             LOG(ERROR)<<"leeek to begin of file :"<<m_path<<".redo failed for errno:"<<errno<<",error info:"<<strerror(errno);
             return -1;
         }
-        if(size!=fileRead(m_redoFd,(uint8_t*)buf,size))//read all data one time
+        if(size!=readFile(m_redoFd,buf,size))//read all data one time
         {
             free(buf);
             LOG(ERROR)<<"read redo file :"<<m_path<<".redo failed for errno:"<<errno<<",error info:"<<strerror(errno);
@@ -149,7 +149,7 @@ public:
             if(((char*)head)+sizeof(DATABASE_INCREASE::recordHead)>buf+size||((char*)head)+head->size>buf+size)//unfinished write ,truncate
             {
                 LOG(WARNING)<<"get an incomplete redo data in file:"<<m_path<<".redo ,offset is "<<((char*)head)-buf;
-                close(m_redoFd);
+                closeFile(m_redoFd);
                 if(0!=openRedoFile())//openRedoFile will truncate file
                 {
                     LOG(WARNING)<<"reopen redo file:"<<m_path<<".redo failed";
@@ -166,7 +166,7 @@ public:
                 m_flag |= BLOCK_FLAG_HAS_REDO; //reset BLOCK_FLAG_HAS_REDO
                 return -1;
             }
-            ((char*)head)+=head->size;
+            head = (DATABASE_INCREASE::recordHead*)(((char*)head)+ head->size);
         }
         m_flag |= BLOCK_FLAG_HAS_REDO; //reset BLOCK_FLAG_HAS_REDO
         LOG(INFO)<<"recoveryFromRedo from  file :"<<m_path<<".redo success";
@@ -179,7 +179,7 @@ public:
             return FAULT;
         DATABASE_INCREASE::recordHead* head = (DATABASE_INCREASE::recordHead*) data;
         int writeSize;
-        if(head->size!=(writeSize=fileWrite(m_redoFd,(uint8_t*)data,head->size)))
+        if(head->size!=(writeSize=writeFile(m_redoFd,data,head->size)))
         {
             if(errno==EBADF) //maybe out time or other cause,reopen it
             {
@@ -288,8 +288,7 @@ public:
     int flush()
     {
         if (0
-                > (m_fd = open(m_path.c_str(), O_RDWR | O_CREAT,
-                        S_IRUSR | S_IWUSR | S_IRGRP)))
+                > (m_fd = openFile(m_path.c_str(), true,true,true)))
         {
             LOG(ERROR)<<"open data file :"<<m_path<<" failed for errno:"<<errno<<",error info:"<<strerror(errno);
             return -1;
